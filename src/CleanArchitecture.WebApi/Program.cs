@@ -6,7 +6,7 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
+builder.Services.AddDocs();
 builder.Services.AddLocalization();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -17,11 +17,11 @@ builder.Services
 
 var app = builder.Build();
 
-app.MapOpenApi();
 app.UseMiddlewares();
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
 app.MapControllers();
 app.UseHttpsRedirection();
+app.UseDocs();
 
 await app.RunAsync();
