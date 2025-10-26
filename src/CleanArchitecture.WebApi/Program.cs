@@ -6,6 +6,8 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseSerilog((context, loggerConfig) => loggerConfig.ReadFrom.Configuration(context.Configuration));
+
 builder.Services.AddDocs();
 builder.Services.AddLocalization();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -20,8 +22,11 @@ var app = builder.Build();
 app.UseMiddlewares();
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
-app.MapControllers();
 app.UseHttpsRedirection();
 app.UseDocs();
+app.ApplyMigrations();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
 
 await app.RunAsync();
