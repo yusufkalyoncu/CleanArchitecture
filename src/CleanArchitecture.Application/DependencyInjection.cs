@@ -2,7 +2,7 @@ using System.Reflection;
 using CleanArchitecture.Application.Abstractions.Behaviors;
 using CleanArchitecture.Application.Abstractions.Messaging;
 using CleanArchitecture.Application.Abstractions.Option;
-using CleanArchitecture.Application.Options;
+using CleanArchitecture.Application.Database;
 using CleanArchitecture.Shared;
 using FluentValidation;
 using Microsoft.Extensions.Configuration;

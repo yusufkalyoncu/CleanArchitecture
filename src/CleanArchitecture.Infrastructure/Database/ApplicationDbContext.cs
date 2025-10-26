@@ -1,4 +1,4 @@
-using CleanArchitecture.Application.Abstractions.Data;
+using CleanArchitecture.Application.Abstractions.Database;
 using CleanArchitecture.Application.Abstractions.DomainEvents;
 using CleanArchitecture.Shared;
 using Microsoft.EntityFrameworkCore;

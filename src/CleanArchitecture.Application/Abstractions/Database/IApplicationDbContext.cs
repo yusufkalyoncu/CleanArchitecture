@@ -1,0 +1,3 @@
+namespace CleanArchitecture.Application.Abstractions.Database;
+
+public interface IApplicationDbContext;
