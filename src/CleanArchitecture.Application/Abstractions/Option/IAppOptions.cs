@@ -1,3 +1,3 @@
 namespace CleanArchitecture.Application.Abstractions.Option;
 
-public interface IAppOptions;
+public interface IAppOption;

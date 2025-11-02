@@ -71,14 +71,14 @@ public static class DependencyInjection
         return services;
     }
     
-    public static IServiceCollection AddAppOptions(
+    private static IServiceCollection AddAppOptions(
         this IServiceCollection services,
         IConfiguration configuration,
         Assembly assembly)
     {
         var optionTypes = assembly
             .GetTypes()
-            .Where(t => typeof(IAppOptions).IsAssignableFrom(t) 
+            .Where(t => typeof(IAppOption).IsAssignableFrom(t) 
                         && t is { IsClass: true, IsAbstract: false });
 
         foreach (var type in optionTypes)
