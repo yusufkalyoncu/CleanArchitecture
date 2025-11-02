@@ -1,12 +1,16 @@
+using CleanArchitecture.Application.Abstractions.Caching;
 using CleanArchitecture.Application.Abstractions.Database;
 using CleanArchitecture.Application.Abstractions.DomainEvents;
+using CleanArchitecture.Application.Caching;
 using CleanArchitecture.Application.Database;
+using CleanArchitecture.Infrastructure.Caching;
 using CleanArchitecture.Infrastructure.Database;
 using CleanArchitecture.Infrastructure.DomainEvents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 
 namespace CleanArchitecture.Infrastructure;
 
@@ -15,7 +19,9 @@ public static class DependencyInjection
     public static void AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         => services
             .AddServices()
-            .AddDatabase(configuration);
+            .AddDatabase(configuration)
+            .AddRedisConfiguration(configuration)
+            .AddCacheServices();
 
     private static IServiceCollection AddServices(this IServiceCollection services)
     {
@@ -24,7 +30,7 @@ public static class DependencyInjection
         return services;
     }
     
-    private static void AddDatabase(this IServiceCollection services, IConfiguration configuration)
+    private static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
     {
         var postgresOptions = configuration.GetSection(PostgresOptions.SectionName).Get<PostgresOptions>();
         if (postgresOptions is null)
@@ -39,5 +45,34 @@ public static class DependencyInjection
                 .UseSnakeCaseNamingConvention());
         
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+
+        return services;
+    }
+    
+    private static IServiceCollection AddRedisConfiguration(this IServiceCollection services, IConfiguration configuration)
+    {
+        var redisOptions = configuration.GetSection(RedisOption.SectionName).Get<RedisOption>();
+        if (redisOptions == null)
+        {
+            throw new InvalidOperationException("RedisOptions section is missing in configuration.");
+        }
+
+        var redisConfig = ConfigurationOptions.Parse(redisOptions.ConnectionString);
+
+        redisConfig.AbortOnConnectFail = redisOptions.AbortOnConnectFail;
+        redisConfig.ConnectTimeout = redisOptions.ConnectTimeout;
+        redisConfig.SyncTimeout = redisOptions.SyncTimeout;
+        redisConfig.DefaultDatabase = redisOptions.Database;
+
+        services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConfig));
+
+        return services;
+    }
+
+    private static void AddCacheServices(this IServiceCollection services)
+    {
+        services.AddMemoryCache();
+        services.AddSingleton<MemoryCacheService>();
+        services.AddSingleton<ICacheService, RedisCacheService>();
     }
 }
