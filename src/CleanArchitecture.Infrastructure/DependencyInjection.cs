@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Serilog;
 using StackExchange.Redis;
 
 namespace CleanArchitecture.Infrastructure;
@@ -74,5 +76,10 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddSingleton<MemoryCacheService>();
         services.AddSingleton<ICacheService, RedisCacheService>();
+    }
+    
+    public static void AddSerilog(this IHostBuilder hostBuilder)
+    {
+        hostBuilder.UseSerilog((context, loggerConfig) => loggerConfig.ReadFrom.Configuration(context.Configuration));
     }
 }
