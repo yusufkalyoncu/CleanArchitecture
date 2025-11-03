@@ -12,13 +12,13 @@ public sealed class RedisCacheService : ICacheService
     private readonly IConnectionMultiplexer _redis;
     private readonly IDatabase _database;
     private readonly ILogger<RedisCacheService> _logger;
-    private readonly RedisOption _options;
+    private readonly RedisOptions _options;
     private readonly string _instanceName;
 
     public RedisCacheService(
         IConnectionMultiplexer redis,
         ILogger<RedisCacheService> logger,
-        IOptions<RedisOption> options)
+        IOptions<RedisOptions> options)
     {
         _redis = redis;
         _logger = logger;

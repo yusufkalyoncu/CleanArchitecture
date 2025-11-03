@@ -2,7 +2,7 @@ using CleanArchitecture.Application.Abstractions.Option;
 
 namespace CleanArchitecture.Application.Caching;
 
-public sealed class RedisOption : IAppOption
+public sealed class RedisOptions : IAppOption
 {
     public const string SectionName = "RedisOptions";
 
