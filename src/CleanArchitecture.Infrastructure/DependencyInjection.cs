@@ -1,8 +1,10 @@
+using System.Reflection;
+using System.Text;
 using CleanArchitecture.Application.Abstractions.Caching;
 using CleanArchitecture.Application.Abstractions.Database;
 using CleanArchitecture.Application.Abstractions.DomainEvents;
-using CleanArchitecture.Application.Caching;
-using CleanArchitecture.Application.Database;
+using CleanArchitecture.Application.Abstractions.Option;
+using CleanArchitecture.Infrastructure.Authentication;
 using CleanArchitecture.Infrastructure.Caching;
 using CleanArchitecture.Infrastructure.Database;
 using CleanArchitecture.Infrastructure.DomainEvents;
@@ -21,6 +23,7 @@ public static class DependencyInjection
     public static void AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         => services
             .AddServices()
+            .AddAppOptions(configuration, typeof(PostgresOptions).Assembly)
             .AddDatabase(configuration)
             .AddRedisConfiguration(configuration)
             .AddCacheServices();
@@ -28,6 +31,35 @@ public static class DependencyInjection
     private static IServiceCollection AddServices(this IServiceCollection services)
     {
         services.AddTransient<IDomainEventsDispatcher, DomainEventsDispatcher>();
+
+        return services;
+    }
+    
+    private static IServiceCollection AddAppOptions(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        Assembly assembly)
+    {
+        var optionTypes = assembly
+            .GetTypes()
+            .Where(t => typeof(IAppOption).IsAssignableFrom(t) 
+                        && t is { IsClass: true, IsAbstract: false });
+
+        foreach (var type in optionTypes)
+        {
+            var sectionName = type.GetField("SectionName")?.GetValue(null)?.ToString();
+
+            if (string.IsNullOrWhiteSpace(sectionName))
+                continue;
+            
+            var method = typeof(OptionsConfigurationServiceCollectionExtensions)
+                .GetMethods(BindingFlags.Static | BindingFlags.Public)
+                .First(m => m.Name == nameof(OptionsConfigurationServiceCollectionExtensions.Configure)
+                            && m.GetParameters().Length == 2)
+                .MakeGenericMethod(type);
+
+            method.Invoke(null, [services, configuration.GetSection(sectionName)]);
+        }
 
         return services;
     }
@@ -53,7 +85,7 @@ public static class DependencyInjection
     
     private static IServiceCollection AddRedisConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
-        var redisOptions = configuration.GetSection(RedisOption.SectionName).Get<RedisOption>();
+        var redisOptions = configuration.GetSection(RedisOptions.SectionName).Get<RedisOptions>();
         if (redisOptions == null)
         {
             throw new InvalidOperationException("RedisOptions section is missing in configuration.");

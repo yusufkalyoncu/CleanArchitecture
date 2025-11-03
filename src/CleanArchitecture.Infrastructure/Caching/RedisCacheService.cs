@@ -1,6 +1,5 @@
 using System.Text.Json;
 using CleanArchitecture.Application.Abstractions.Caching;
-using CleanArchitecture.Application.Caching;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;

@@ -1,8 +1,5 @@
-using System.Reflection;
 using CleanArchitecture.Application.Abstractions.Behaviors;
 using CleanArchitecture.Application.Abstractions.Messaging;
-using CleanArchitecture.Application.Abstractions.Option;
-using CleanArchitecture.Application.Database;
 using CleanArchitecture.Shared;
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
@@ -18,8 +15,7 @@ public static class DependencyInjection
             .AddValidationDecorator()
             .AddLoggingDecorator()
             .AddValidators()
-            .AddDomainEventHandler()
-            .AddAppOptions(configuration, typeof(PostgresOptions).Assembly);
+            .AddDomainEventHandler();
 
     private static IServiceCollection AddCqrs(this IServiceCollection services)
     {
@@ -67,35 +63,6 @@ public static class DependencyInjection
             .AddClasses(classes => classes.AssignableTo(typeof(IDomainEventHandler<>)), publicOnly: false)
             .AsImplementedInterfaces()
             .WithScopedLifetime());
-
-        return services;
-    }
-    
-    private static IServiceCollection AddAppOptions(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        Assembly assembly)
-    {
-        var optionTypes = assembly
-            .GetTypes()
-            .Where(t => typeof(IAppOption).IsAssignableFrom(t) 
-                        && t is { IsClass: true, IsAbstract: false });
-
-        foreach (var type in optionTypes)
-        {
-            var sectionName = type.GetField("SectionName")?.GetValue(null)?.ToString();
-
-            if (string.IsNullOrWhiteSpace(sectionName))
-                continue;
-            
-            var method = typeof(OptionsConfigurationServiceCollectionExtensions)
-                .GetMethods(BindingFlags.Static | BindingFlags.Public)
-                .First(m => m.Name == nameof(OptionsConfigurationServiceCollectionExtensions.Configure)
-                            && m.GetParameters().Length == 2)
-                .MakeGenericMethod(type);
-
-            method.Invoke(null, [services, configuration.GetSection(sectionName)]);
-        }
 
         return services;
     }

@@ -1,6 +1,6 @@
 using CleanArchitecture.Application.Abstractions.Option;
 
-namespace CleanArchitecture.Application.Caching;
+namespace CleanArchitecture.Infrastructure.Caching;
 
 public sealed class RedisOptions : IAppOption
 {

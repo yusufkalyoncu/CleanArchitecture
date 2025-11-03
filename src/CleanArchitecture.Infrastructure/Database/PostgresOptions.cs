@@ -1,6 +1,6 @@
 using CleanArchitecture.Application.Abstractions.Option;
 
-namespace CleanArchitecture.Application.Database;
+namespace CleanArchitecture.Infrastructure.Database;
 
 public sealed class PostgresOptions : IAppOption
 {
