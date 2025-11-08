@@ -1,12 +1,15 @@
 using CleanArchitecture.Shared;
-using MediatR;
 
 namespace CleanArchitecture.Application.Abstractions.Messaging;
 
 public interface ICommandHandler<in TCommand>
-    : IRequestHandler<TCommand, Result>
-    where TCommand : ICommand;
+    where TCommand : ICommand
+{
+    Task<Result> Handle(TCommand request, CancellationToken cancellationToken);
+}
 
 public interface ICommandHandler<in TCommand, TResponse>
-    : IRequestHandler<TCommand, Result<TResponse>>
-    where TCommand : ICommand<TResponse>;
+    where TCommand : ICommand<TResponse>
+{
+    Task<Result<TResponse>> Handle(TCommand request, CancellationToken cancellationToken);
+}
