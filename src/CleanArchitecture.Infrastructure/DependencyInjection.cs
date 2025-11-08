@@ -120,6 +120,7 @@ public static class DependencyInjection
     private static void AddAuthenticationInternal(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHttpContextAccessor();
+        services.AddScoped<ISessionService, SessionService>();
         services.AddSingleton<ITokenProvider, TokenProvider>();
         
         var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>();
@@ -152,6 +153,27 @@ public static class DependencyInjection
             ValidateIssuerSigningKey = true,
             ValidateIssuer = true,
             ValidateAudience = true
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var sessionService = context.HttpContext.RequestServices.GetRequiredService<ISessionService>();
+                var jti = context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+
+                if (string.IsNullOrEmpty(jti))
+                {
+                    context.Fail("Token does not contain JTI claim.");
+                    return;
+                }
+
+                var isBlacklisted = await sessionService.IsAccessTokenBlacklistedAsync(jti);
+                if (isBlacklisted)
+                {
+                    context.Fail("Token has been revoked.");
+                }
+            }
         };
     }
     

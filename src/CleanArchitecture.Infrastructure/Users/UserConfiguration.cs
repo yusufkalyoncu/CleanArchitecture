@@ -15,7 +15,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
                 email => email.Value,
                 value => Email.FromValue(value))
             .HasColumnName("email")
-            .HasMaxLength(255)
+            .HasMaxLength(Email.MaxLength)
             .IsRequired();
         
         builder.HasIndex(u => u.Email)
@@ -26,12 +26,12 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         {
             nameBuilder.Property(n => n.FirstName)
                 .HasColumnName("first_name")
-                .HasMaxLength(100)
+                .HasMaxLength(Name.FirstNameMaxLength)
                 .IsRequired();
                 
             nameBuilder.Property(n => n.LastName)
                 .HasColumnName("last_name")
-                .HasMaxLength(100)
+                .HasMaxLength(Name.LastNameMaxLength)
                 .IsRequired();
         });
         

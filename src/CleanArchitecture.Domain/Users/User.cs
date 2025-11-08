@@ -2,10 +2,10 @@ using CleanArchitecture.Shared;
 
 namespace CleanArchitecture.Domain.Users;
 
-public sealed class User : Entity
+public class User : Entity
 {
     public Email Email { get; private set; }
-    public Name Name { get; private set; }
+    public Name Name { get; private set; } = null!;
     public Password Password { get; private set; }
 
     private User(Email email, Name name, Password password)
@@ -14,6 +14,8 @@ public sealed class User : Entity
         Name = name;
         Password = password;
     }
+    
+    protected User(){}
 
     public static Result<User> Create(
         string email,
