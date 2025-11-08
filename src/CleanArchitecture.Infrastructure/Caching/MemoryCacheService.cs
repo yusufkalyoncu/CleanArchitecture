@@ -1,11 +1,13 @@
 using CleanArchitecture.Application.Abstractions.Caching;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Primitives;
 
 namespace CleanArchitecture.Infrastructure.Caching;
 
-public sealed class MemoryCacheService(IMemoryCache memoryCache) : ICacheService
+public sealed class MemoryCacheService(IMemoryCache memoryCache) : ICacheService, IDisposable
 {
-    private readonly HashSet<string> _keys = [];
+    private readonly object _lock = new();
+    private CancellationTokenSource _cancellationTokenSource = new();
 
     public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
@@ -18,53 +20,32 @@ public sealed class MemoryCacheService(IMemoryCache memoryCache) : ICacheService
         var options = new MemoryCacheEntryOptions();
 
         if (expiration.HasValue)
+        {
             options.SetAbsoluteExpiration(expiration.Value);
+        }
+
+        lock (_lock)
+        {
+            options.AddExpirationToken(new CancellationChangeToken(_cancellationTokenSource.Token));
+        }
 
         memoryCache.Set(key, value, options);
-
-        lock (_keys)
-            _keys.Add(key);
-
         return Task.CompletedTask;
     }
 
     public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         memoryCache.Remove(key);
-        lock (_keys)
-            _keys.Remove(key);
-
         return Task.CompletedTask;
     }
 
-    public Task RemoveAsync(List<string> keys, CancellationToken cancellationToken = default)
+    public Task RemoveAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default)
     {
         foreach (var key in keys)
+        {
             memoryCache.Remove(key);
-
-        lock (_keys)
-        {
-            foreach (var key in keys)
-                _keys.Remove(key);
         }
-
         return Task.CompletedTask;
-    }
-
-    public Task<List<string>> GetKeysByPatternAsync(string pattern, CancellationToken cancellationToken = default)
-    {
-        lock (_keys)
-        {
-            var regexPattern = "^" + System.Text.RegularExpressions.Regex.Escape(pattern).Replace("\\*", ".*") + "$";
-            var matched = _keys.Where(k => System.Text.RegularExpressions.Regex.IsMatch(k, regexPattern)).ToList();
-            return Task.FromResult(matched);
-        }
-    }
-
-    public async Task RemoveByPatternAsync(string pattern, CancellationToken cancellationToken = default)
-    {
-        var keys = await GetKeysByPatternAsync(pattern, cancellationToken);
-        await RemoveAsync(keys, cancellationToken);
     }
 
     public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
@@ -72,32 +53,45 @@ public sealed class MemoryCacheService(IMemoryCache memoryCache) : ICacheService
         return Task.FromResult(memoryCache.TryGetValue(key, out _));
     }
 
-    public async Task<T> GetOrSetAsync<T>(
+    public Task<T?> GetOrSetAsync<T>(
         string key,
         Func<Task<T>> factory,
         TimeSpan? expiration = null,
         CancellationToken cancellationToken = default)
     {
-        if (memoryCache.TryGetValue(key, out T? cachedValue) && cachedValue is not null)
-            return cachedValue;
-
-        var newValue = await factory();
-
-        await SetAsync(key, newValue, expiration, cancellationToken);
-
-        return newValue;
+        return memoryCache.GetOrCreateAsync<T>(key, entry =>
+        {
+            if (expiration.HasValue)
+            {
+                entry.SetAbsoluteExpiration(expiration.Value);
+            }
+            
+            lock (_lock)
+            {
+                entry.AddExpirationToken(new CancellationChangeToken(_cancellationTokenSource.Token));
+            }
+            
+            return factory();
+        });
     }
 
     public Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        lock (_keys)
+        lock (_lock)
         {
-            foreach (var key in _keys.ToList())
-                memoryCache.Remove(key);
-
-            _keys.Clear();
+            _cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Dispose();
+            _cancellationTokenSource = new CancellationTokenSource();
         }
 
         return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        lock (_lock)
+        {
+            _cancellationTokenSource.Dispose();
+        }
     }
 }

@@ -103,11 +103,15 @@ public static class DependencyInjection
         return services;
     }
 
-    private static void AddCacheServices(this IServiceCollection services)
+    private static IServiceCollection AddCacheServices(this IServiceCollection services)
     {
         services.AddMemoryCache();
         services.AddSingleton<MemoryCacheService>();
         services.AddSingleton<ICacheService, RedisCacheService>();
+        services.AddSingleton<ICacheService, MemoryCacheService>();
+        services.AddSingleton<IDistributedCacheService, RedisCacheService>();
+
+        return services;
     }
     
     public static void AddSerilog(this IHostBuilder hostBuilder)
