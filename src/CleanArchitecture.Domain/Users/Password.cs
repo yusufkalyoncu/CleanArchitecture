@@ -5,6 +5,9 @@ namespace CleanArchitecture.Domain.Users;
 
 public readonly record struct Password
 {
+    public const int MinLength = 6;
+    public const int MaxLength = 30;
+    
     private const int SaltSize = 16;
     private const int HashSize = 32;
     private const int Iterations = 500000;
@@ -18,12 +21,12 @@ public readonly record struct Password
     {
         if (string.IsNullOrWhiteSpace(plainText))
         {
-            return Result.Failure<Password>(PasswordErrors.PasswordCannotBeNullOrEmpty);
+            return Result.Failure<Password>(PasswordErrors.CannotBeNullOrEmpty);
         }
         
-        if (plainText.Length < 6)
+        if (plainText.Length is < MinLength or > MaxLength)
         {
-            return Result.Failure<Password>(PasswordErrors.PasswordLengthInvalid);
+            return Result.Failure<Password>(PasswordErrors.InvalidLength);
         }
         
         var hashedValue = HashPassword(plainText);
@@ -38,13 +41,13 @@ public readonly record struct Password
         return $"{Convert.ToHexString(hash)}-{Convert.ToHexString(salt)}";
     }
     
-    private static bool VerifyPassword(string password, string passwordHash)
+    public bool VerifyPassword(string plainText)
     {
-        string[] parts = passwordHash.Split('-');
+        string[] parts = HashedValue.Split('-');
         byte[] hash = Convert.FromHexString(parts[0]);
         byte[] salt = Convert.FromHexString(parts[1]);
 
-        byte[] inputHash = Rfc2898DeriveBytes.Pbkdf2(password, salt, Iterations, Algorithm, HashSize);
+        byte[] inputHash = Rfc2898DeriveBytes.Pbkdf2(plainText, salt, Iterations, Algorithm, HashSize);
 
         return CryptographicOperations.FixedTimeEquals(hash, inputHash);
     }

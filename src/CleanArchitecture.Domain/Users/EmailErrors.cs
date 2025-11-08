@@ -4,8 +4,10 @@ namespace CleanArchitecture.Domain.Users;
 
 public static class EmailErrors
 {
-    public static Error EmailCannotBeNullOrEmpty =>
+    public static Error CannotBeNullOrEmpty =>
         new("Email.CannotBeNullOrEmpty", ErrorType.BadRequest);
-    public static Error EmailIsInvalid =>
+    public static Error InvalidFormat =>
         new("Email.IsInvalid", ErrorType.BadRequest);
+    public static Error LengthExceeded =>
+        new("Email.LengthExceeded", ErrorType.BadRequest);
 }

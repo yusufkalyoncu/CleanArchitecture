@@ -5,6 +5,8 @@ namespace CleanArchitecture.Domain.Users;
 
 public readonly record struct Email
 {
+    public const int MaxLength = 100;
+    
     public string Value { get; }
     
     private Email(string value) => Value = value;
@@ -13,12 +15,17 @@ public readonly record struct Email
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return Result.Failure<Email>(EmailErrors.EmailCannotBeNullOrEmpty);
+            return Result.Failure<Email>(EmailErrors.CannotBeNullOrEmpty);
+        }
+        
+        if (value.Length > MaxLength)
+        {
+            return Result.Failure<Email>(EmailErrors.LengthExceeded);
         }
 
         if (!new EmailAddressAttribute().IsValid(value))
         {
-            return Result.Failure<Email>(EmailErrors.EmailIsInvalid);
+            return Result.Failure<Email>(EmailErrors.InvalidFormat);
         }
         
         return new Email(value);
