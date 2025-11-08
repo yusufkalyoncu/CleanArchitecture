@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
+using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
 
 namespace CleanArchitecture.WebApi.Extensions;
@@ -33,7 +34,40 @@ public static class DocsExtensions
 
     private static void AddScalar(this IServiceCollection services)
     {
-        services.AddOpenApi();
+        services.AddOpenApi(options =>
+        {
+            options.AddDocumentTransformer((document, _, _) =>
+            {
+                document.Components ??= new OpenApiComponents();
+                document.Components.SecuritySchemes = new Dictionary<string, OpenApiSecurityScheme>
+                {
+                    ["Bearer"] = new OpenApiSecurityScheme
+                    {
+                        Type = SecuritySchemeType.Http,
+                        Scheme = "bearer",
+                        BearerFormat = "JWT",
+                        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\""
+                    }
+                };
+
+                document.SecurityRequirements = new List<OpenApiSecurityRequirement>
+                {
+                    new OpenApiSecurityRequirement
+                    {
+                        [new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        }] = Array.Empty<string>()
+                    }
+                };
+
+                return Task.CompletedTask;
+            });
+        });
     }
     
     public static void UseDocs(this WebApplication app)
