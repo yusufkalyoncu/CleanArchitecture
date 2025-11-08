@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using CleanArchitecture.Application.Abstractions.Authentication;
 using CleanArchitecture.Application.Abstractions.Caching;
 using CleanArchitecture.Application.Abstractions.Database;
 using CleanArchitecture.Application.Abstractions.DomainEvents;
@@ -8,11 +9,14 @@ using CleanArchitecture.Infrastructure.Authentication;
 using CleanArchitecture.Infrastructure.Caching;
 using CleanArchitecture.Infrastructure.Database;
 using CleanArchitecture.Infrastructure.DomainEvents;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using StackExchange.Redis;
 
@@ -26,7 +30,8 @@ public static class DependencyInjection
             .AddAppOptions(configuration, typeof(PostgresOptions).Assembly)
             .AddDatabase(configuration)
             .AddRedisConfiguration(configuration)
-            .AddCacheServices();
+            .AddCacheServices()
+            .AddAuthenticationInternal(configuration);
 
     private static IServiceCollection AddServices(this IServiceCollection services)
     {
@@ -106,12 +111,48 @@ public static class DependencyInjection
     private static IServiceCollection AddCacheServices(this IServiceCollection services)
     {
         services.AddMemoryCache();
-        services.AddSingleton<MemoryCacheService>();
-        services.AddSingleton<ICacheService, RedisCacheService>();
         services.AddSingleton<ICacheService, MemoryCacheService>();
         services.AddSingleton<IDistributedCacheService, RedisCacheService>();
 
         return services;
+    }
+
+    private static void AddAuthenticationInternal(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddHttpContextAccessor();
+        services.AddSingleton<ITokenProvider, TokenProvider>();
+        
+        var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>();
+        if (jwtOptions == null)
+        {
+            throw new InvalidOperationException("JwtOptions section is missing in configuration.");
+        }
+        
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SecretKey));
+        
+        services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o => ConfigureJwtBearer(o, key, jwtOptions, validateLifetime: true))
+            .AddJwtBearer("BearerIgnoreLifetime", o => ConfigureJwtBearer(o, key, jwtOptions, validateLifetime: false));
+    }
+    
+    private static void ConfigureJwtBearer(JwtBearerOptions options, SecurityKey key, JwtOptions jwtOptions, bool validateLifetime)
+    {
+        options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            IssuerSigningKey = key,
+            ValidIssuer = jwtOptions.Issuer,
+            ValidAudience = jwtOptions.Audience,
+            ClockSkew = TimeSpan.Zero,
+            ValidateLifetime = validateLifetime,
+            ValidateIssuerSigningKey = true,
+            ValidateIssuer = true,
+            ValidateAudience = true
+        };
     }
     
     public static void AddSerilog(this IHostBuilder hostBuilder)

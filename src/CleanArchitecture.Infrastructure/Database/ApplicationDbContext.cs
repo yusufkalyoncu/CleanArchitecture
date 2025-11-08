@@ -1,5 +1,6 @@
 using CleanArchitecture.Application.Abstractions.Database;
 using CleanArchitecture.Application.Abstractions.DomainEvents;
+using CleanArchitecture.Domain.Users;
 using CleanArchitecture.Shared;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,29 +10,20 @@ public sealed class ApplicationDbContext(
     DbContextOptions<ApplicationDbContext> options,
     IDomainEventsDispatcher domainEventsDispatcher) : DbContext(options), IApplicationDbContext
 {
+    public DbSet<User> Users => Set<User>();
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
         modelBuilder.HasDefaultSchema(DatabaseSchemas.Default);
     }
-    
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        // When should you publish domain events?
-        //
-        // 1. BEFORE calling SaveChangesAsync
-        //     - domain events are part of the same transaction
-        //     - immediate consistency
-        // 2. AFTER calling SaveChangesAsync
-        //     - domain events are a separate transaction
-        //     - eventual consistency
-        //     - handlers can fail
-
-        int result = await base.SaveChangesAsync(cancellationToken);
-
         await PublishDomainEventsAsync();
-
+        var result = await base.SaveChangesAsync(cancellationToken);
+        
         return result;
     }
     

@@ -16,6 +16,9 @@
 /dataSources/
 /dataSources.local.xml
 
+# EF Core migrations ignore
+src/CleanArchitecture.Infrastructure/Database/Migrations/
+
 # Build results
 [Dd]ebug/
 [Rr]elease/
