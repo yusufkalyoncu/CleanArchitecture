@@ -43,6 +43,7 @@ public static class ResultExtensions
                 ErrorType.Forbidden => "Forbidden",
                 ErrorType.NotFound => "Not Found",
                 ErrorType.Conflict => "Conflict",
+                ErrorType.TooManyRequests => "Too Many Request",
                 _ => "Server failure"
             };
 
@@ -55,6 +56,7 @@ public static class ResultExtensions
                 ErrorType.Forbidden => localizer[error.ErrorCode],
                 ErrorType.NotFound => localizer[error.ErrorCode],
                 ErrorType.Conflict => localizer[error.ErrorCode],
+                ErrorType.TooManyRequests => localizer[error.ErrorCode],
                 _ => localizer["Error.Unexpected"]
             };
         }
@@ -78,6 +80,7 @@ public static class ResultExtensions
                 ErrorType.Forbidden => StatusCodes.Status403Forbidden,
                 ErrorType.NotFound => StatusCodes.Status404NotFound,
                 ErrorType.Conflict => StatusCodes.Status409Conflict,
+                ErrorType.TooManyRequests => StatusCodes.Status429TooManyRequests,
                 _ => StatusCodes.Status500InternalServerError
             };
 
