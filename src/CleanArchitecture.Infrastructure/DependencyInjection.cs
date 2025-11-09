@@ -4,11 +4,13 @@ using CleanArchitecture.Application.Abstractions.Authentication;
 using CleanArchitecture.Application.Abstractions.Caching;
 using CleanArchitecture.Application.Abstractions.Database;
 using CleanArchitecture.Application.Abstractions.DomainEvents;
+using CleanArchitecture.Application.Abstractions.Locking;
 using CleanArchitecture.Application.Abstractions.Option;
 using CleanArchitecture.Infrastructure.Authentication;
 using CleanArchitecture.Infrastructure.Caching;
 using CleanArchitecture.Infrastructure.Database;
 using CleanArchitecture.Infrastructure.DomainEvents;
+using CleanArchitecture.Infrastructure.Locking;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -31,6 +33,7 @@ public static class DependencyInjection
             .AddDatabase(configuration)
             .AddRedisConfiguration(configuration)
             .AddCacheServices()
+            .AddLockManager()
             .AddAuthenticationInternal(configuration);
 
     private static IServiceCollection AddServices(this IServiceCollection services)
@@ -113,6 +116,13 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddSingleton<ICacheService, MemoryCacheService>();
         services.AddSingleton<IDistributedCacheService, RedisCacheService>();
+
+        return services;
+    }
+    
+    private static IServiceCollection AddLockManager(this IServiceCollection services)
+    {
+        services.AddSingleton<IDistributedLockManager, RedisLockManager>();
 
         return services;
     }
