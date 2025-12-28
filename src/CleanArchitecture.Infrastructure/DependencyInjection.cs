@@ -4,13 +4,18 @@ using CleanArchitecture.Application.Abstractions.Authentication;
 using CleanArchitecture.Application.Abstractions.Caching;
 using CleanArchitecture.Application.Abstractions.Database;
 using CleanArchitecture.Application.Abstractions.DomainEvents;
+using CleanArchitecture.Application.Abstractions.EventBus;
 using CleanArchitecture.Application.Abstractions.Locking;
 using CleanArchitecture.Application.Abstractions.Option;
+using CleanArchitecture.Application.Abstractions.Outbox;
 using CleanArchitecture.Infrastructure.Authentication;
 using CleanArchitecture.Infrastructure.Caching;
 using CleanArchitecture.Infrastructure.Database;
 using CleanArchitecture.Infrastructure.DomainEvents;
+using CleanArchitecture.Infrastructure.EventBus;
 using CleanArchitecture.Infrastructure.Locking;
+using CleanArchitecture.Infrastructure.Outbox;
+using CleanArchitecture.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -19,6 +24,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
+using Scrutor;
 using Serilog;
 using StackExchange.Redis;
 
@@ -30,6 +37,8 @@ public static class DependencyInjection
         => services
             .AddServices()
             .AddAppOptions(configuration, typeof(PostgresOptions).Assembly)
+            .AddEventBus()
+            .AddOutboxServices()
             .AddDatabase(configuration)
             .AddRedisConfiguration(configuration)
             .AddCacheServices()
@@ -42,7 +51,7 @@ public static class DependencyInjection
 
         return services;
     }
-    
+
     private static IServiceCollection AddAppOptions(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -50,7 +59,7 @@ public static class DependencyInjection
     {
         var optionTypes = assembly
             .GetTypes()
-            .Where(t => typeof(IAppOption).IsAssignableFrom(t) 
+            .Where(t => typeof(IAppOption).IsAssignableFrom(t)
                         && t is { IsClass: true, IsAbstract: false });
 
         foreach (var type in optionTypes)
@@ -59,7 +68,7 @@ public static class DependencyInjection
 
             if (string.IsNullOrWhiteSpace(sectionName))
                 continue;
-            
+
             var method = typeof(OptionsConfigurationServiceCollectionExtensions)
                 .GetMethods(BindingFlags.Static | BindingFlags.Public)
                 .First(m => m.Name == nameof(OptionsConfigurationServiceCollectionExtensions.Configure)
@@ -71,7 +80,7 @@ public static class DependencyInjection
 
         return services;
     }
-    
+
     private static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
     {
         var postgresOptions = configuration.GetSection(PostgresOptions.SectionName).Get<PostgresOptions>();
@@ -79,19 +88,32 @@ public static class DependencyInjection
         {
             throw new InvalidOperationException("Postgres options are not configured.");
         }
-        
-        services.AddDbContext<ApplicationDbContext>(
-            options => options
-                .UseNpgsql(postgresOptions.ConnectionString, npgsqlOptions =>
+
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(postgresOptions.ConnectionString);
+        var dataSource = dataSourceBuilder.Build();
+        services.AddSingleton(dataSource);
+
+        services.AddDbContext<ApplicationDbContext>((sp, options) =>
+        {
+            var outboxInterceptor = sp.GetService<OutboxInsertInterceptor>();
+
+            options.UseNpgsql(postgresOptions.ConnectionString, npgsqlOptions =>
                     npgsqlOptions.MigrationsHistoryTable(HistoryRepository.DefaultTableName, DatabaseSchemas.Default))
-                .UseSnakeCaseNamingConvention());
-        
+                .UseSnakeCaseNamingConvention();
+
+            if (outboxInterceptor != null)
+            {
+                options.AddInterceptors(outboxInterceptor);
+            }
+        });
+
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
         return services;
     }
-    
-    private static IServiceCollection AddRedisConfiguration(this IServiceCollection services, IConfiguration configuration)
+
+    private static IServiceCollection AddRedisConfiguration(this IServiceCollection services,
+        IConfiguration configuration)
     {
         var redisOptions = configuration.GetSection(RedisOptions.SectionName).Get<RedisOptions>();
         if (redisOptions == null)
@@ -119,7 +141,7 @@ public static class DependencyInjection
 
         return services;
     }
-    
+
     private static IServiceCollection AddLockManager(this IServiceCollection services)
     {
         services.AddSingleton<IDistributedLockManager, RedisLockManager>();
@@ -132,25 +154,27 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ISessionService, SessionService>();
         services.AddSingleton<ITokenProvider, TokenProvider>();
-        
+
         var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>();
         if (jwtOptions == null)
         {
             throw new InvalidOperationException("JwtOptions section is missing in configuration.");
         }
-        
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SecretKey));
-        
+
         services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o => ConfigureJwtBearer(o, key, jwtOptions, validateLifetime: true))
+            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme,
+                o => ConfigureJwtBearer(o, key, jwtOptions, validateLifetime: true))
             .AddJwtBearer("BearerIgnoreLifetime", o => ConfigureJwtBearer(o, key, jwtOptions, validateLifetime: false));
     }
-    
-    private static void ConfigureJwtBearer(JwtBearerOptions options, SecurityKey key, JwtOptions jwtOptions, bool validateLifetime)
+
+    private static void ConfigureJwtBearer(JwtBearerOptions options, SecurityKey key, JwtOptions jwtOptions,
+        bool validateLifetime)
     {
         options.RequireHttpsMetadata = false;
         options.TokenValidationParameters = new TokenValidationParameters
@@ -187,6 +211,31 @@ public static class DependencyInjection
         };
     }
     
+    private static IServiceCollection AddEventBus(this IServiceCollection services)
+    {
+        services.AddSingleton<IEventBus, InMemoryEventBus>();
+        
+        services.Scan(selector => selector
+            .FromAssemblies(typeof(IEventBus).Assembly)
+            .AddClasses(classes => classes.AssignableTo(typeof(IIntegrationEventHandler<>)), publicOnly: false)
+            .UsingRegistrationStrategy(RegistrationStrategy.Append)
+            .AsImplementedInterfaces()
+            .WithScopedLifetime());
+        
+        return services;
+    }
+
+    private static IServiceCollection AddOutboxServices(this IServiceCollection services)
+    {
+        services.AddScoped<IOutboxService, OutboxService>();
+        services.AddSingleton<IOutboxSignal, OutboxSignal>();
+        services.AddScoped<OutboxProcessor>();
+        services.AddHostedService<OutboxBackgroundService>();
+        services.AddScoped<OutboxInsertInterceptor>();
+
+        return services;
+    }
+
     public static void AddSerilog(this IHostBuilder hostBuilder)
     {
         hostBuilder.UseSerilog((context, loggerConfig) => loggerConfig.ReadFrom.Configuration(context.Configuration));

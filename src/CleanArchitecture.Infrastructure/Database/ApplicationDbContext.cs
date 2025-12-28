@@ -1,6 +1,7 @@
 using CleanArchitecture.Application.Abstractions.Database;
 using CleanArchitecture.Application.Abstractions.DomainEvents;
 using CleanArchitecture.Domain.Users;
+using CleanArchitecture.Infrastructure.Outbox;
 using CleanArchitecture.Shared;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ public sealed class ApplicationDbContext(
     IDomainEventsDispatcher domainEventsDispatcher) : DbContext(options), IApplicationDbContext
 {
     public DbSet<User> Users => Set<User>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

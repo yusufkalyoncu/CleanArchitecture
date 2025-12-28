@@ -1,3 +1,4 @@
+using CleanArchitecture.Domain.Users.Events;
 using CleanArchitecture.Shared;
 
 namespace CleanArchitecture.Domain.Users;
@@ -41,6 +42,13 @@ public class User : Entity
             return Result.Failure<User>(passwordResult.Error);
         }
         
-        return new User(emailResult.Data, nameResult.Data, passwordResult.Data);
+        var user = new User(
+            emailResult.Data,
+            nameResult.Data,
+            passwordResult.Data);
+        
+        user.Raise(new UserRegisteredDomainEvent(user.Id));
+        
+        return Result.Success(user);
     }
 }
