@@ -4,57 +4,69 @@ public interface IDistributedCacheService : ICacheService
 {
     /// <summary>
     /// Atomically gets the value of a key, compares it with an expected value,
-    /// and removes the key if the values match.
+    /// and removes the key only if the values match.
     /// </summary>
-    Task<bool> CompareAndRemoveAsync<T>(string key, T expectedValue,
-        CancellationToken cancellationToken = default);
-    
-    // --- Set (SET) Operations ---
+    Task<bool> CompareAndRemoveAsync<T>(string key, T expectedValue, CancellationToken cancellationToken = default);
+
+    // --- Unordered Set Operations ---
     
     /// <summary>
-    /// Adds an element to a set (SET). (SADD command - O(1))
+    /// Adds a unique member to a collection.
     /// </summary>
     Task SetAddAsync(string key, string value, CancellationToken cancellationToken = default);
     
     /// <summary>
-    /// Removes an element from a set (SET). (SREM command - O(1))
+    /// Removes a member from a collection.
     /// </summary>
     Task SetRemoveAsync(string key, string value, CancellationToken cancellationToken = default);
     
     /// <summary>
-    /// Returns the number of elements in a set (SET). (SCARD command - O(1))
+    /// Gets the total number of unique members in a collection.
     /// </summary>
-    Task<long> SetLengthAsync(string key, CancellationToken cancellationToken = default);
+    Task<long> GetSetLengthAsync(string key, CancellationToken cancellationToken = default);
     
     /// <summary>
-    /// Returns all elements in a set (SET). (SMEMBERS command)
+    /// Gets all members of a collection.
     /// </summary>
-    Task<string[]> SetMembersAsync(string key, CancellationToken cancellationToken = default);
+    Task<string[]> GetSetMembersAsync(string key, CancellationToken cancellationToken = default);
     
-    // --- Sorted Set (ZSET) Operations ---
+    // --- Ordered Set Operations (Ranked Collections) ---
     
     /// <summary>
-    /// Adds a member with a specific score to a sorted set (ZSET). (ZADD command)
+    /// Adds a member to an ordered collection with a specific score for ranking.
     /// </summary>
-    Task SortedSetAddAsync(string key, string member, double score, CancellationToken cancellationToken = default);
+    Task OrderedSetAddAsync(string key, string member, double score, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes a specific member from a sorted set (ZSET). (ZREM command)
+    /// Removes a specific member from an ordered collection.
     /// </summary>
-    Task<bool> SortedSetRemoveAsync(string key, string member, CancellationToken cancellationToken = default);
+    Task<bool> OrderedSetRemoveAsync(string key, string member, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns the number of elements in a sorted set (ZSET). (ZCARD command - O(1))
+    /// Gets the number of members in an ordered collection.
     /// </summary>
-    Task<long> SortedSetLengthAsync(string key, CancellationToken cancellationToken = default);
+    Task<long> GetOrderedSetLengthAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes all members in a sorted set (ZSET) within a specified score range. (ZREMRANGEBYSCORE command)
+    /// Removes members within a specific score range from an ordered collection.
     /// </summary>
-    Task<long> SortedSetRemoveRangeByScoreAsync(string key, double minScore, double maxScore, CancellationToken cancellationToken = default);
+    Task<long> RemoveOrderedSetRangeByScoreAsync(string key, double minScore, double maxScore, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns members in a sorted set (ZSET) within a specified score range. (ZRANGEBYSCORE command)
+    /// Gets members within a specific score range from an ordered collection.
     /// </summary>
-    Task<string[]> SortedSetRangeByScoreAsync(string key, double minScore = double.NegativeInfinity, double maxScore = double.PositiveInfinity, CancellationToken cancellationToken = default);
+    Task<string[]> GetOrderedSetRangeByScoreAsync(string key, double minScore = double.NegativeInfinity, double maxScore = double.PositiveInfinity, CancellationToken cancellationToken = default);
+
+    // --- Atomic Scripting & Pipelining ---
+
+    /// <summary>
+    /// Executes a provider-specific script atomically. 
+    /// Use this for complex operations that must be performed as a single unit.
+    /// </summary>
+    Task<T> ExecuteScriptAsync<T>(string script, string[] keys, object[] args, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a batch to group multiple operations and execute them in a single network round-trip.
+    /// </summary>
+    ICacheBatch CreateBatch();
 }

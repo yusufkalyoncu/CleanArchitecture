@@ -1,5 +1,7 @@
 using CleanArchitecture.Application.Abstractions.Authentication;
 using CleanArchitecture.Application.Abstractions.Caching;
+using CleanArchitecture.Domain.Users;
+using CleanArchitecture.Shared;
 using Microsoft.Extensions.Options;
 
 namespace CleanArchitecture.Infrastructure.Authentication;
@@ -9,106 +11,134 @@ public sealed class SessionService(
     IOptions<JwtOptions> jwtOption) : ISessionService
 {
     private readonly JwtOptions _jwtOption = jwtOption.Value;
-    
-    private static string RefreshTokenKey(Guid userId, string jti) => $"auth:refresh:{userId}:{jti}";
-    private static string BlacklistKey(string jti) => $"auth:blacklist:{jti}";
-    private static string TokenCooldownKey(string jti) => $"auth:rt_cooldown:{jti}";
-    private static string UserSessionsKey(Guid userId) => $"auth:sessions_zset:{userId}";
-    
-    public async Task StoreRefreshTokenAsync(Guid userId, string jti, string refreshToken)
+    private const string BlacklistValue = "revoked";
+    private static readonly string SerializedBlacklistValue = $"\"{BlacklistValue}\"";
+    private const int MaxSessions = 5;
+
+    #region Login & Register
+
+    public async Task<Result> CreateLoginSessionAsync(Guid userId, string jti, string refreshToken)
     {
-        await cacheService.SetAsync(RefreshTokenKey(userId, jti), refreshToken, _jwtOption.RefreshTokenLifetime);
-    }
-    
-    public async Task StartTokenCooldownAsync(string jti)
-    {
-        if (_jwtOption.TokenCooldownLifeTime <= TimeSpan.Zero) return;
-        await cacheService.SetAsync(TokenCooldownKey(jti), "1", _jwtOption.TokenCooldownLifeTime);
-    }
-    
-    public async Task<bool> IsTokenOnCooldownAsync(string jti)
-    {
-        return await cacheService.ExistsAsync(TokenCooldownKey(jti));
-    }
-    
-    public async Task<bool> ConsumeRefreshTokenAsync(Guid userId, string jti, string refreshToken)
-    {
-        var key = RefreshTokenKey(userId, jti);
-        return await cacheService.CompareAndRemoveAsync(key, refreshToken);
-    }
-    
-    public async Task DeleteRefreshTokenAsync(Guid userId, string jti)
-    {
-        await cacheService.RemoveAsync(RefreshTokenKey(userId, jti));
-    }
-    
-    private async Task BlacklistAccessTokenAsync(string jti)
-    {
-        await cacheService.SetAsync(BlacklistKey(jti), "revoked", _jwtOption.AccessTokenLifeTime);
+        var activeCount = await GetActiveSessionCountInternalAsync(userId);
+        if (activeCount >= MaxSessions) return Result.Failure(UserErrors.MaxSessionsReached);
+
+        var batch = cacheService.CreateBatch();
+        batch.SetAsync(RefreshTokenKey(userId, jti), refreshToken, _jwtOption.RefreshTokenLifetime);
+        batch.SortedSetAddAsync(UserSessionsKey(userId), jti, GetExpiryScore());
+        await batch.ExecuteAsync();
+
+        return Result.Success();
     }
 
-    public async Task BlacklistAccessTokenAsync(string jti, TimeSpan remainingTtl)
+    public async Task CreateRegisterSessionAsync(Guid userId, string jti, string refreshToken)
     {
-        var finalTtl = remainingTtl > TimeSpan.FromSeconds(5)
-            ? remainingTtl
-            : TimeSpan.FromSeconds(5);
+        var batch = cacheService.CreateBatch();
+        batch.SetAsync(RefreshTokenKey(userId, jti), refreshToken, _jwtOption.RefreshTokenLifetime);
+        batch.SortedSetAddAsync(UserSessionsKey(userId), jti, GetExpiryScore());
+        await batch.ExecuteAsync();
+    }
+
+    #endregion
+
+    #region Refresh (Consume & Rotate)
+
+    public async Task<ConsumeResult> ConsumeRefreshTokenAsync(Guid userId, string jti, string refreshToken)
+    {
+        var cached = await cacheService.GetAsync<ConsumeResult?>(GracePeriodKey(jti));
+        if (cached != null) return cached.Value;
+
+        var removed = await cacheService.CompareAndRemoveAsync(RefreshTokenKey(userId, jti), refreshToken);
+        return new ConsumeResult(removed);
+    }
+
+    public async Task RotateSessionAsync(Guid userId, string oldJti, string newJti, string newAt, string newRt)
+    {
+        var batch = cacheService.CreateBatch();
+        var score = GetExpiryScore();
+
+        batch.RemoveAsync(RefreshTokenKey(userId, oldJti));
+        batch.SortedSetRemoveAsync(UserSessionsKey(userId), oldJti);
+
+        batch.SetAsync(RefreshTokenKey(userId, newJti), newRt, _jwtOption.RefreshTokenLifetime);
+        batch.SortedSetAddAsync(UserSessionsKey(userId), newJti, score);
+
+        batch.SetAsync(GracePeriodKey(oldJti), new ConsumeResult(
+            true,
+            newAt,
+            newRt), _jwtOption.GracePeriodLifeTime);
+
+        await batch.ExecuteAsync();
+    }
+
+    #endregion
+
+    #region Logout & Blacklist
+
+    public async Task RevokeSessionAsync(Guid userId, string jti, TimeSpan remainingTtl)
+    {
+        var batch = cacheService.CreateBatch();
         
-        await cacheService.SetAsync(BlacklistKey(jti), "revoked", finalTtl);
+        if (remainingTtl > TimeSpan.FromSeconds(5))
+            batch.SetAsync(BlacklistKey(jti), BlacklistValue, remainingTtl);
+
+        batch.RemoveAsync(RefreshTokenKey(userId, jti));
+        batch.SortedSetRemoveAsync(UserSessionsKey(userId), jti);
+
+        await batch.ExecuteAsync();
     }
 
-    public async Task<bool> IsAccessTokenBlacklistedAsync(string jti)
+    public async Task RevokeAllSessionsAsync(Guid userId)
     {
-        return await cacheService.ExistsAsync(BlacklistKey(jti));
-    }
-    
-    public async Task RegisterSessionAsync(Guid userId, string jti)
-    {
-        var refreshTokenExpiresAt = DateTime.UtcNow.Add(_jwtOption.RefreshTokenLifetime);
-        var score = ((DateTimeOffset)refreshTokenExpiresAt).ToUnixTimeSeconds();
-        await cacheService.SortedSetAddAsync(UserSessionsKey(userId), jti, score);
-    }
-    
-    public async Task UnregisterSessionAsync(Guid userId, string jti)
-    {
-        await cacheService.SortedSetRemoveAsync(UserSessionsKey(userId), jti);
-    }
-    
-    public async Task<long> GetActiveSessionCountAsync(Guid userId)
-    {
-        var key = UserSessionsKey(userId);
-        var nowTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        const string script = @"
+            local jtis = redis.call('ZRANGEBYSCORE', KEYS[1], ARGV[1], '+inf')
+            for _, jti in ipairs(jtis) do
+                redis.call('SET', KEYS[3] .. jti, ARGV[3], 'EX', ARGV[2])
+                redis.call('DEL', KEYS[2] .. jti)
+            end
+            return redis.call('DEL', KEYS[1])";
 
-        await cacheService.SortedSetRemoveRangeByScoreAsync(key, 0, nowTimestamp);
-        
-        return await cacheService.SortedSetLengthAsync(key);
-    }
+        var keys = new[] 
+        { 
+            UserSessionsKey(userId), 
+            $"auth:rt:{userId}:", 
+            "auth:bl:" 
+        };
 
-    public async Task BlacklistAllUserSessionsAsync(Guid userId)
-    {
-        var key = UserSessionsKey(userId);
-        var nowTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-
-        var jtis = await cacheService.SortedSetRangeByScoreAsync(key, nowTimestamp);
-
-        if (jtis.Length == 0) return;
-
-        var tasks = new List<Task>();
-        var refreshKeysToRemove = new List<string>();
-
-        foreach (var jti in jtis)
+        var args = new object[]
         {
-            tasks.Add(BlacklistAccessTokenAsync(jti)); 
-            
-            refreshKeysToRemove.Add(RefreshTokenKey(userId, jti));
-        }
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            (int)_jwtOption.AccessTokenLifeTime.TotalSeconds,
+            SerializedBlacklistValue
+        };
 
-        if (refreshKeysToRemove.Count > 0)
-        {
-            tasks.Add(cacheService.RemoveAsync(refreshKeysToRemove));
-        }
-
-        tasks.Add(cacheService.RemoveAsync(key)); 
-
-        await Task.WhenAll(tasks);
+        await cacheService.ExecuteScriptAsync<long>(script, keys, args);
     }
+
+    public async Task<bool> IsAccessTokenBlacklistedAsync(string jti) => 
+        await cacheService.ExistsAsync(BlacklistKey(jti));
+
+    #endregion
+
+    #region Helpers
+
+    private static string RefreshTokenKey(Guid u, string j) => $"auth:rt:{u}:{j}";
+    private static string BlacklistKey(string j) => $"auth:bl:{j}";
+    private static string GracePeriodKey(string j) => $"auth:grace:{j}";
+    private static string UserSessionsKey(Guid u) => $"auth:sessions:{u}";
+
+    private double GetExpiryScore() => ((DateTimeOffset)DateTime.UtcNow.Add(_jwtOption.RefreshTokenLifetime)).ToUnixTimeSeconds();
+
+    private async Task<long> GetActiveSessionCountInternalAsync(Guid userId)
+    {
+        const string script = @"
+            redis.call('ZREMRANGEBYSCORE', KEYS[1], ARGV[1], ARGV[2])
+            return redis.call('ZCARD', KEYS[1])";
+
+        var keys = new[] { UserSessionsKey(userId) };
+        var args = new object[] { 0, DateTimeOffset.UtcNow.ToUnixTimeSeconds() };
+
+        return await cacheService.ExecuteScriptAsync<long>(script, keys, args);
+    }
+
+    #endregion
 }

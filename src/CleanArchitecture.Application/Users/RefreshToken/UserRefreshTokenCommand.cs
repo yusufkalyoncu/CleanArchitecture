@@ -12,8 +12,7 @@ public sealed record UserRefreshTokenCommandRequest(string RefreshToken);
 public sealed record UserRefreshTokenCommand(
     Guid UserId,
     string Jti,
-    string RefreshToken,
-    TimeSpan RemainingAccessTokenTtl) : ICommand<UserRefreshTokenCommandResponse>;
+    string RefreshToken) : ICommand<UserRefreshTokenCommandResponse>;
 
 public sealed record UserRefreshTokenCommandResponse(string AccessToken, string RefreshToken);
 
@@ -26,19 +25,22 @@ internal sealed class UserRefreshTokenCommandHandler(
         UserRefreshTokenCommand request,
         CancellationToken cancellationToken)
     {
-        if (await sessionService.IsTokenOnCooldownAsync(request.Jti))
-        {
-            return Result.Failure<UserRefreshTokenCommandResponse>(UserErrors.TokenOnCooldown);
-        }
-        
-        var isConsumed = await sessionService.ConsumeRefreshTokenAsync(
+        var consumeRefreshTokenResult = await sessionService.ConsumeRefreshTokenAsync(
             request.UserId, 
             request.Jti, 
             request.RefreshToken);
 
-        if (!isConsumed)
+        if (!consumeRefreshTokenResult.IsSuccess)
         {
             return Result.Failure<UserRefreshTokenCommandResponse>(UserErrors.InvalidToken);
+        }
+
+        if (!string.IsNullOrEmpty(consumeRefreshTokenResult.CachedAccessToken) &&
+            !string.IsNullOrEmpty(consumeRefreshTokenResult.CachedRefreshToken))
+        {
+            return new UserRefreshTokenCommandResponse(
+                consumeRefreshTokenResult.CachedAccessToken,
+                consumeRefreshTokenResult.CachedRefreshToken);
         }
 
         var user = await dbContext.Users
@@ -48,20 +50,19 @@ internal sealed class UserRefreshTokenCommandHandler(
 
         if (user is null)
         {
-            await sessionService.DeleteRefreshTokenAsync(request.UserId, request.Jti);
             return Result.Failure<UserRefreshTokenCommandResponse>(UserErrors.InvalidToken);
         }
+
+        var (newJti, newAccessToken) = tokenProvider.CreateAccessToken(user);
+        var newRefreshToken = tokenProvider.CreateRefreshToken();
+
+        await sessionService.RotateSessionAsync(
+            request.UserId,
+            request.Jti,
+            newJti,
+            newAccessToken,
+            newRefreshToken);
         
-        await sessionService.BlacklistAccessTokenAsync(request.Jti, request.RemainingAccessTokenTtl);
-        await sessionService.UnregisterSessionAsync(request.UserId, request.Jti);
-        
-        var (jti, accessToken) = tokenProvider.CreateAccessToken(user);
-        var refreshToken = tokenProvider.CreateRefreshToken();
-        
-        await sessionService.StoreRefreshTokenAsync(user.Id, jti, refreshToken);
-        await sessionService.StartTokenCooldownAsync(jti);
-        await sessionService.RegisterSessionAsync(user.Id, jti);
-        
-        return new UserRefreshTokenCommandResponse(accessToken, refreshToken);
+        return new UserRefreshTokenCommandResponse(newAccessToken, newRefreshToken);
     }
 }

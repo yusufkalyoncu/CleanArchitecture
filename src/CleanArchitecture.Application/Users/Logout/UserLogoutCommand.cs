@@ -16,9 +16,7 @@ internal sealed class UserLogoutCommandHandler(
         UserLogoutCommand request,
         CancellationToken cancellationToken)
     {
-        await sessionService.BlacklistAccessTokenAsync(request.Jti, request.RemainingAccessTokenTtl);
-        await sessionService.DeleteRefreshTokenAsync(request.UserId, request.Jti);
-        await sessionService.UnregisterSessionAsync(request.UserId, request.Jti);
+        await sessionService.RevokeSessionAsync(request.UserId, request.Jti, request.RemainingAccessTokenTtl);
         return Result.Success();
     }
 }

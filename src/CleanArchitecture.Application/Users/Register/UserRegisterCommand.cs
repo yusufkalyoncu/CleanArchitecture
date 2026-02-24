@@ -49,15 +49,14 @@ internal sealed class UserRegisterCommandHandler(
             return Result.Failure<UserRegisterCommandResponse>(userResult.Error);
         }
 
-        await dbContext.Users.AddAsync(userResult.Data, cancellationToken);
+        var user = userResult.Data;
+        await dbContext.Users.AddAsync(user, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        var (jti, accessToken) = tokenProvider.CreateAccessToken(userResult.Data);
+        var (jti, accessToken) = tokenProvider.CreateAccessToken(user);
         var refreshToken = tokenProvider.CreateRefreshToken();
 
-        await sessionService.StoreRefreshTokenAsync(userResult.Data.Id, jti, refreshToken);
-        await sessionService.StartTokenCooldownAsync(jti);
-        await sessionService.RegisterSessionAsync(userResult.Data.Id, jti);
+        await sessionService.CreateRegisterSessionAsync(user.Id, jti, refreshToken);
 
         return new UserRegisterCommandResponse(accessToken, refreshToken);
     }

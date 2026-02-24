@@ -13,7 +13,7 @@ internal sealed class UserLogoutAllCommandHandler(
         UserLogoutAllCommand request,
         CancellationToken cancellationToken)
     {
-        await sessionService.BlacklistAllUserSessionsAsync(request.UserId);
+        await sessionService.RevokeAllSessionsAsync(request.UserId);
         return Result.Success();
     }
 }

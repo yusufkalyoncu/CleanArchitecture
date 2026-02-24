@@ -16,8 +16,6 @@ internal sealed class UserLoginCommandHandler(
     ITokenProvider tokenProvider,
     ISessionService sessionService) : ICommandHandler<UserLoginCommand, UserLoginCommandResponse>
 {
-    private const int MaxSessions = 5;
-
     public async Task<Result<UserLoginCommandResponse>> Handle(
         UserLoginCommand request,
         CancellationToken cancellationToken)
@@ -44,18 +42,18 @@ internal sealed class UserLoginCommandHandler(
             return Result.Failure<UserLoginCommandResponse>(UserErrors.InvalidCredentials);
         }
         
-        var sessionCount = await sessionService.GetActiveSessionCountAsync(user.Id);
-        if (sessionCount >= MaxSessions)
-        {
-            return Result.Failure<UserLoginCommandResponse>(UserErrors.MaxSessionsReached);
-        }
-        
         var (jti, accessToken) = tokenProvider.CreateAccessToken(user);
         var refreshToken = tokenProvider.CreateRefreshToken();
-        
-        await sessionService.StoreRefreshTokenAsync(user.Id, jti, refreshToken);
-        await sessionService.StartTokenCooldownAsync(jti);
-        await sessionService.RegisterSessionAsync(user.Id, jti);
+
+        var sessionResult = await sessionService.CreateLoginSessionAsync(
+            user.Id,
+            jti,
+            refreshToken);
+
+        if (sessionResult.IsFailure)
+        {
+            return Result.Failure<UserLoginCommandResponse>(sessionResult.Error);
+        }
         
         return new UserLoginCommandResponse(accessToken, refreshToken);
     }

@@ -26,6 +26,8 @@ public sealed class RedisCacheService : IDistributedCacheService
         _database = _redis.GetDatabase(_options.Database);
     }
 
+    #region Basic Cache Operations (ICacheService)
+    
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -47,8 +49,7 @@ public sealed class RedisCacheService : IDistributedCacheService
         }
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null,
-        CancellationToken cancellationToken = default)
+    public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -109,8 +110,7 @@ public sealed class RedisCacheService : IDistributedCacheService
         }
     }
 
-    public async Task<T?> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null,
-        CancellationToken cancellationToken = default)
+    public async Task<T?> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -133,167 +133,7 @@ public sealed class RedisCacheService : IDistributedCacheService
 
         return value;
     }
-
-    public async Task<bool> CompareAndRemoveAsync<T>(string key, T expectedValue,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var redisKey = GetRedisKey(key);
-            var serializedExpectedValue = JsonSerializer.Serialize(expectedValue);
-
-            const string script = @"
-                local currentValue = redis.call('GET', KEYS[1])
-                if currentValue == ARGV[1] then
-                    redis.call('DEL', KEYS[1])
-                    return 1
-                else
-                    return 0
-                end";
-
-            var result = await _database.ScriptEvaluateAsync(
-                script,
-                [redisKey],
-                [serializedExpectedValue]);
-
-            return (long)result == 1;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in CompareAndRemoveAsync<{T}>: {Key}", typeof(T).Name, key);
-            return false;
-        }
-    }
-
-    public async Task SetAddAsync(string key, string value, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var redisKey = GetRedisKey(key);
-            await _database.SetAddAsync(redisKey, value);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error adding to set in Redis: {Key}", key);
-        }
-    }
-
-    public async Task SetRemoveAsync(string key, string value, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var redisKey = GetRedisKey(key);
-            await _database.SetRemoveAsync(redisKey, value);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error removing from set in Redis: {Key}", key);
-        }
-    }
-
-    public async Task<long> SetLengthAsync(string key, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var redisKey = GetRedisKey(key);
-            return await _database.SetLengthAsync(redisKey);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting set length from Redis: {Key}", key);
-            return 0;
-        }
-    }
-
-    public async Task<string[]> SetMembersAsync(string key, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var redisKey = GetRedisKey(key);
-            var members = await _database.SetMembersAsync(redisKey);
-            return members.Select(m => m.ToString()).ToArray();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting set members from Redis: {Key}", key);
-            return [];
-        }
-    }
-
-    public async Task SortedSetAddAsync(string key, string member, double score,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var redisKey = GetRedisKey(key);
-            await _database.SortedSetAddAsync(redisKey, member, score);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error setting sorted set cache key in Redis: {Key}", key);
-        }
-    }
-
-    public async Task<bool> SortedSetRemoveAsync(string key, string member,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var redisKey = GetRedisKey(key);
-            return await _database.SortedSetRemoveAsync(redisKey, member);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error removing sorted set cache key in Redis: {Key}", key);
-            return false;
-        }
-    }
-
-    public async Task<long> SortedSetLengthAsync(string key, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var redisKey = GetRedisKey(key);
-            return await _database.SortedSetLengthAsync(redisKey);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting sorted set length in Redis: {Key}", key);
-            return 0;
-        }
-    }
-
-    public async Task<long> SortedSetRemoveRangeByScoreAsync(string key, double minScore, double maxScore,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var redisKey = GetRedisKey(key);
-            return await _database.SortedSetRemoveRangeByScoreAsync(redisKey, minScore, maxScore);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in SortedSetRemoveRangeByScoreAsync: {Key}", key);
-            return 0;
-        }
-    }
-
-    public async Task<string[]> SortedSetRangeByScoreAsync(string key, double minScore = Double.NegativeInfinity,
-        double maxScore = Double.PositiveInfinity, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var redisKey = GetRedisKey(key);
-            var result = await _database.SortedSetRangeByScoreAsync(redisKey, minScore, maxScore);
-            return result.Select(m => m.ToString()).ToArray();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in SortedSetRangeByScoreAsync: {Key}", key);
-            return [];
-        }
-    }
-
+    
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -330,9 +170,79 @@ public sealed class RedisCacheService : IDistributedCacheService
             _logger.LogError(ex, "Error clearing Redis database by pattern");
         }
     }
+    
+    #endregion
+    
+    #region Atomic & Advanced Operations
 
-    private string GetRedisKey(string key)
+    public async Task<bool> CompareAndRemoveAsync<T>(string key, T expectedValue, CancellationToken cancellationToken = default)
     {
-        return $"{_instanceName}:{key}";
+        const string script = @"
+            if redis.call('get', KEYS[1]) == ARGV[1] then
+                return redis.call('del', KEYS[1])
+            else
+                return 0
+            end";
+
+        var result = await ExecuteScriptAsync<long>(script, [key], [JsonSerializer.Serialize(expectedValue)], cancellationToken);
+        return result == 1;
     }
+
+    public async Task<T> ExecuteScriptAsync<T>(string script, string[] keys, object[] args, CancellationToken cancellationToken = default)
+    {
+        var redisKeys = keys.Select(k => (RedisKey)GetRedisKey(k)).ToArray();
+        var redisArgs = args.Select(a => (RedisValue)a.ToString()!).ToArray();
+
+        var result = await _database.ScriptEvaluateAsync(script, redisKeys, redisArgs);
+        
+        if (result.IsNull) return default!;
+        return (T)Convert.ChangeType(result, typeof(T));
+    }
+
+    public ICacheBatch CreateBatch() => new RedisCacheBatch(_database.CreateBatch(), _instanceName);
+
+    #endregion
+
+    #region Set Operations (Unordered)
+
+    public async Task SetAddAsync(string key, string value, CancellationToken cancellationToken = default) 
+        => await _database.SetAddAsync(GetRedisKey(key), value);
+
+    public async Task SetRemoveAsync(string key, string value, CancellationToken cancellationToken = default) 
+        => await _database.SetRemoveAsync(GetRedisKey(key), value);
+
+    public async Task<long> GetSetLengthAsync(string key, CancellationToken cancellationToken = default) 
+        => await _database.SetLengthAsync(GetRedisKey(key));
+
+    public async Task<string[]> GetSetMembersAsync(string key, CancellationToken cancellationToken = default)
+    {
+        var members = await _database.SetMembersAsync(GetRedisKey(key));
+        return members.Select(m => m.ToString()).ToArray();
+    }
+
+    #endregion
+
+    #region Ordered Set Operations
+
+    public async Task OrderedSetAddAsync(string key, string member, double score, CancellationToken cancellationToken = default)
+        => await _database.SortedSetAddAsync(GetRedisKey(key), member, score);
+
+    public async Task<bool> OrderedSetRemoveAsync(string key, string member, CancellationToken cancellationToken = default)
+        => await _database.SortedSetRemoveAsync(GetRedisKey(key), member);
+
+    public async Task<long> GetOrderedSetLengthAsync(string key, CancellationToken cancellationToken = default)
+        => await _database.SortedSetLengthAsync(GetRedisKey(key));
+
+    public async Task<long> RemoveOrderedSetRangeByScoreAsync(string key, double minScore, double maxScore, CancellationToken cancellationToken = default)
+        => await _database.SortedSetRemoveRangeByScoreAsync(GetRedisKey(key), minScore, maxScore);
+
+    public async Task<string[]> GetOrderedSetRangeByScoreAsync(string key, double minScore, double maxScore, CancellationToken cancellationToken = default)
+    {
+        var result = await _database.SortedSetRangeByScoreAsync(GetRedisKey(key), minScore, maxScore);
+        return result.Select(m => m.ToString()).ToArray();
+    }
+
+    #endregion
+
+    private string GetRedisKey(string key) => $"{_instanceName}:{key}";
 }

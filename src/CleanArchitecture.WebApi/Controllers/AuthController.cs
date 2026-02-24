@@ -74,8 +74,7 @@ public sealed class AuthController(IStringLocalizer<Lang> localizer) : Controlle
         var command = new UserRefreshTokenCommand(
             User.GetUserId(),
             User.GetJti(),
-            request.RefreshToken,
-            User.GetAccessTokenRemainingLifetime());
+            request.RefreshToken);
         
         var result = await handler.Handle(command, cancellationToken);
         return result.ToOk(localizer);

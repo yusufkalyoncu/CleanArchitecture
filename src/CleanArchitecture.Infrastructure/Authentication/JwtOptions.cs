@@ -11,5 +11,5 @@ public sealed class JwtOptions : IAppOption
     public required string SecretKey { get; init; }
     public TimeSpan AccessTokenLifeTime { get; init; }
     public TimeSpan RefreshTokenLifetime { get; init; }
-    public TimeSpan TokenCooldownLifeTime { get; init; }
+    public TimeSpan GracePeriodLifeTime { get; init; }
 }
