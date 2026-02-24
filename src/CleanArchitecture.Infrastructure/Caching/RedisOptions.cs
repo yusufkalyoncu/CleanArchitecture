@@ -6,9 +6,9 @@ public sealed class RedisOptions : IAppOption
 {
     public const string SectionName = "RedisOptions";
 
-    public string Host { get; init; } = default!;
+    public string Host { get; init; } = null!;
     public int Port { get; init; }
-    public string InstanceName { get; init; } = default!;
+    public string InstanceName { get; init; } = null!;
     public int Database { get; init; }
     public bool AbortOnConnectFail { get; init; }
     public int ConnectTimeout { get; init; }
