@@ -152,6 +152,7 @@ public static class DependencyInjection
     private static void AddAuthenticationInternal(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHttpContextAccessor();
+        services.AddScoped<IUserContext, UserContext>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddSingleton<ITokenProvider, TokenProvider>();
 

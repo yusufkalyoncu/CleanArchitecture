@@ -3,7 +3,6 @@ using CleanArchitecture.Application.Users.Login;
 using CleanArchitecture.Application.Users.Logout;
 using CleanArchitecture.Application.Users.RefreshToken;
 using CleanArchitecture.Application.Users.Register;
-using CleanArchitecture.Infrastructure.Authentication;
 using CleanArchitecture.Shared.Resources.Languages;
 using CleanArchitecture.WebApi.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -25,7 +24,7 @@ public sealed class AuthController(IStringLocalizer<Lang> localizer) : Controlle
         var result = await handler.Handle(command, cancellationToken);
         return result.ToOk(localizer);
     }
-    
+
     [HttpPost("login")]
     public async Task<IResult> Login(
         [FromBody] UserLoginCommand command,
@@ -35,35 +34,29 @@ public sealed class AuthController(IStringLocalizer<Lang> localizer) : Controlle
         var result = await handler.Handle(command, cancellationToken);
         return result.ToOk(localizer);
     }
-    
+
     [Authorize]
     [HttpPost("logout")]
     public async Task<IResult> Logout(
         ICommandHandler<UserLogoutCommand> handler,
         CancellationToken cancellationToken)
     {
-        var command = new UserLogoutCommand(
-            User.GetUserId(),
-            User.GetJti(),
-            User.GetAccessTokenRemainingLifetime());
-        
+        var command = new UserLogoutCommand();
         var result = await handler.Handle(command, cancellationToken);
         return result.ToOk(localizer);
     }
-    
+
     [Authorize]
     [HttpPost("logout-all")]
     public async Task<IResult> LogoutAll(
         ICommandHandler<UserLogoutAllCommand> handler,
         CancellationToken cancellationToken)
     {
-        var command = new UserLogoutAllCommand(
-            User.GetUserId());
-        
+        var command = new UserLogoutAllCommand();
         var result = await handler.Handle(command, cancellationToken);
         return result.ToOk(localizer);
     }
-    
+
     [Authorize(AuthenticationSchemes = "BearerIgnoreLifetime")]
     [HttpPost("refresh-token")]
     public async Task<IResult> RefreshToken(
@@ -71,11 +64,7 @@ public sealed class AuthController(IStringLocalizer<Lang> localizer) : Controlle
         ICommandHandler<UserRefreshTokenCommand, UserRefreshTokenCommandResponse> handler,
         CancellationToken cancellationToken)
     {
-        var command = new UserRefreshTokenCommand(
-            User.GetUserId(),
-            User.GetJti(),
-            request.RefreshToken);
-        
+        var command = new UserRefreshTokenCommand(request.RefreshToken);
         var result = await handler.Handle(command, cancellationToken);
         return result.ToOk(localizer);
     }

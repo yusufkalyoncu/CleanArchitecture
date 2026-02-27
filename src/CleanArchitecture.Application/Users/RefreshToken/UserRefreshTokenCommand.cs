@@ -9,14 +9,12 @@ namespace CleanArchitecture.Application.Users.RefreshToken;
 
 public sealed record UserRefreshTokenCommandRequest(string RefreshToken);
 
-public sealed record UserRefreshTokenCommand(
-    Guid UserId,
-    string Jti,
-    string RefreshToken) : ICommand<UserRefreshTokenCommandResponse>;
+public sealed record UserRefreshTokenCommand(string RefreshToken) : ICommand<UserRefreshTokenCommandResponse>;
 
 public sealed record UserRefreshTokenCommandResponse(string AccessToken, string RefreshToken);
 
 internal sealed class UserRefreshTokenCommandHandler(
+    IUserContext userContext,
     IApplicationDbContext dbContext,
     ITokenProvider tokenProvider,
     ISessionService sessionService) : ICommandHandler<UserRefreshTokenCommand, UserRefreshTokenCommandResponse>
@@ -26,8 +24,8 @@ internal sealed class UserRefreshTokenCommandHandler(
         CancellationToken cancellationToken)
     {
         var consumeRefreshTokenResult = await sessionService.ConsumeRefreshTokenAsync(
-            request.UserId, 
-            request.Jti, 
+            userContext.Id, 
+            userContext.Jti, 
             request.RefreshToken);
 
         if (!consumeRefreshTokenResult.IsSuccess)
@@ -45,7 +43,7 @@ internal sealed class UserRefreshTokenCommandHandler(
 
         var user = await dbContext.Users
             .AsNoTracking()
-            .Where(x => x.Id == request.UserId)
+            .Where(x => x.Id == userContext.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (user is null)
@@ -57,8 +55,8 @@ internal sealed class UserRefreshTokenCommandHandler(
         var newRefreshToken = tokenProvider.CreateRefreshToken();
 
         await sessionService.RotateSessionAsync(
-            request.UserId,
-            request.Jti,
+            userContext.Id,
+            userContext.Jti,
             newJti,
             newAccessToken,
             newRefreshToken);
