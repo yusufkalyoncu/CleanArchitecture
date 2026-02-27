@@ -8,6 +8,7 @@ using CleanArchitecture.Application.Abstractions.EventBus;
 using CleanArchitecture.Application.Abstractions.Locking;
 using CleanArchitecture.Application.Abstractions.Option;
 using CleanArchitecture.Application.Abstractions.Outbox;
+using CleanArchitecture.Infrastructure.Audit;
 using CleanArchitecture.Infrastructure.Authentication;
 using CleanArchitecture.Infrastructure.Caching;
 using CleanArchitecture.Infrastructure.Database;
@@ -93,18 +94,17 @@ public static class DependencyInjection
         var dataSource = dataSourceBuilder.Build();
         services.AddSingleton(dataSource);
 
+        services.AddScoped<AuditInterceptor>();
+
         services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {
-            var outboxInterceptor = sp.GetService<OutboxInsertInterceptor>();
+            var outboxInterceptor = sp.GetRequiredService<OutboxInsertInterceptor>();
+            var auditInterceptor = sp.GetRequiredService<AuditInterceptor>();
 
             options.UseNpgsql(postgresOptions.ConnectionString, npgsqlOptions =>
                     npgsqlOptions.MigrationsHistoryTable(HistoryRepository.DefaultTableName, DatabaseSchemas.Default))
-                .UseSnakeCaseNamingConvention();
-
-            if (outboxInterceptor != null)
-            {
-                options.AddInterceptors(outboxInterceptor);
-            }
+                .UseSnakeCaseNamingConvention()
+                .AddInterceptors(outboxInterceptor, auditInterceptor);
         });
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());

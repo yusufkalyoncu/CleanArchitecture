@@ -8,7 +8,9 @@ public readonly record struct Email
     public const int MaxLength = 100;
     
     public string Value { get; }
-    
+
+    public override string ToString() => Value;
+
     private Email(string value) => Value = value;
     
     public static Result<Email> Create(string value)

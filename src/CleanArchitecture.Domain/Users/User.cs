@@ -1,12 +1,14 @@
+using CleanArchitecture.Domain.Audit;
 using CleanArchitecture.Domain.Users.Events;
 using CleanArchitecture.Shared;
 
 namespace CleanArchitecture.Domain.Users;
 
-public class User : Entity
+public class User : Entity, IAuditable
 {
     public Email Email { get; private set; }
     public Name Name { get; private set; }
+    [AuditMask]
     public Password Password { get; private set; }
 
     private User(Email email, Name name, Password password)

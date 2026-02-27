@@ -1,5 +1,6 @@
 using CleanArchitecture.Application.Abstractions.Database;
 using CleanArchitecture.Application.Abstractions.DomainEvents;
+using CleanArchitecture.Domain.Audit;
 using CleanArchitecture.Domain.Users;
 using CleanArchitecture.Infrastructure.Outbox;
 using CleanArchitecture.Shared;
@@ -11,6 +12,7 @@ public sealed class ApplicationDbContext(
     DbContextOptions<ApplicationDbContext> options,
     IDomainEventsDispatcher domainEventsDispatcher) : DbContext(options), IApplicationDbContext
 {
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<User> Users => Set<User>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     
