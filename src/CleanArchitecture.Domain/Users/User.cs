@@ -6,7 +6,7 @@ namespace CleanArchitecture.Domain.Users;
 public class User : Entity
 {
     public Email Email { get; private set; }
-    public Name Name { get; private set; } = null!;
+    public Name Name { get; private set; }
     public Password Password { get; private set; }
 
     private User(Email email, Name name, Password password)

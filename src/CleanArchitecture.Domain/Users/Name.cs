@@ -2,7 +2,7 @@ using CleanArchitecture.Shared;
 
 namespace CleanArchitecture.Domain.Users;
 
-public sealed record Name
+public readonly record struct Name
 {
     public const int FirstNameMinLength = 2;
     public const int FirstNameMaxLength = 50;

@@ -22,7 +22,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsUnique()
             .HasDatabaseName("IX_Users_Email");
         
-        builder.OwnsOne(u => u.Name, nameBuilder =>
+        builder.ComplexProperty(u => u.Name, nameBuilder =>
         {
             nameBuilder.Property(n => n.FirstName)
                 .HasColumnName("first_name")
