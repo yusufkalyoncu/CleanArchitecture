@@ -4,10 +4,12 @@ using CleanArchitecture.Application.Users.Logout;
 using CleanArchitecture.Application.Users.RefreshToken;
 using CleanArchitecture.Application.Users.Register;
 using CleanArchitecture.Infrastructure.Authentication;
+using CleanArchitecture.Infrastructure.RateLimiting;
 using CleanArchitecture.Shared.Resources.Languages;
 using CleanArchitecture.WebApi.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Localization;
 
 namespace CleanArchitecture.WebApi.Controllers;
@@ -16,6 +18,7 @@ namespace CleanArchitecture.WebApi.Controllers;
 [Route("api/auth")]
 public sealed class AuthController(IStringLocalizer<Lang> localizer) : ControllerBase
 {
+    [EnableRateLimiting(RateLimitPolicies.Registration)]
     [HttpPost("register")]
     public async Task<IResult> Register(
         [FromBody] UserRegisterCommand command,
@@ -26,6 +29,7 @@ public sealed class AuthController(IStringLocalizer<Lang> localizer) : Controlle
         return result.ToOk(localizer);
     }
 
+    [EnableRateLimiting(RateLimitPolicies.Login)]
     [HttpPost("login")]
     public async Task<IResult> Login(
         [FromBody] UserLoginCommand command,

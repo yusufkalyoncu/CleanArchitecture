@@ -12,7 +12,7 @@ public static class AuthenticationExtensions
 {
     public const string IgnoreLifetimeScheme = "BearerIgnoreLifetime";
 
-    public static void AddAuthenticationInternal(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddAuthenticationInternal(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext, UserContext>();
@@ -35,6 +35,8 @@ public static class AuthenticationExtensions
             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme,
                 o => ConfigureJwtBearer(o, key, jwtOptions, validateLifetime: true))
             .AddJwtBearer(IgnoreLifetimeScheme, o => ConfigureJwtBearer(o, key, jwtOptions, validateLifetime: false));
+
+        return services;
     }
 
     private static void ConfigureJwtBearer(

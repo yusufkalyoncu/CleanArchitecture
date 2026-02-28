@@ -24,11 +24,11 @@ app.UseMiddlewares();
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
-app.MapControllers();
 app.UseDocs();
 app.ApplyMigrations();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapControllers();
 
 await app.RunAsync();

@@ -9,6 +9,7 @@ using CleanArchitecture.Infrastructure.DomainEvents;
 using CleanArchitecture.Infrastructure.EventBus;
 using CleanArchitecture.Infrastructure.Locking;
 using CleanArchitecture.Infrastructure.Outbox;
+using CleanArchitecture.Infrastructure.RateLimiting;
 using CleanArchitecture.Shared;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,7 +31,8 @@ public static class DependencyInjection
             .AddRedisConfiguration(configuration)
             .AddCacheServices()
             .AddLockManager()
-            .AddAuthenticationInternal(configuration);
+            .AddAuthenticationInternal(configuration)
+            .AddRateLimiting(configuration);
 
     private static IServiceCollection AddAppOptions(
         this IServiceCollection services,
