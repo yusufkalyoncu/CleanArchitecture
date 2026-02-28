@@ -3,6 +3,7 @@ using CleanArchitecture.Application.Users.Login;
 using CleanArchitecture.Application.Users.Logout;
 using CleanArchitecture.Application.Users.RefreshToken;
 using CleanArchitecture.Application.Users.Register;
+using CleanArchitecture.Infrastructure.Authentication;
 using CleanArchitecture.Shared.Resources.Languages;
 using CleanArchitecture.WebApi.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -57,7 +58,7 @@ public sealed class AuthController(IStringLocalizer<Lang> localizer) : Controlle
         return result.ToOk(localizer);
     }
 
-    [Authorize(AuthenticationSchemes = "BearerIgnoreLifetime")]
+    [Authorize(AuthenticationSchemes = AuthenticationExtensions.IgnoreLifetimeScheme)]
     [HttpPost("refresh-token")]
     public async Task<IResult> RefreshToken(
         [FromBody] UserRefreshTokenCommandRequest request,
