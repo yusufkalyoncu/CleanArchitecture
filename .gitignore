@@ -74,3 +74,6 @@ TestResults/
 # Windows specific
 Thumbs.db
 ehthumbs.db
+
+# Appsettings
+appsettings.Development.json
