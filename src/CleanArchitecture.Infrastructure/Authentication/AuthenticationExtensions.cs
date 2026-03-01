@@ -10,8 +10,6 @@ namespace CleanArchitecture.Infrastructure.Authentication;
 
 public static class AuthenticationExtensions
 {
-    public const string IgnoreLifetimeScheme = "BearerIgnoreLifetime";
-
     public static IServiceCollection AddAuthenticationInternal(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHttpContextAccessor();
@@ -29,12 +27,13 @@ public static class AuthenticationExtensions
 
         services.AddAuthentication(options =>
             {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultAuthenticateScheme = AuthSchemes.Default;
+                options.DefaultChallengeScheme = AuthSchemes.Default;
             })
-            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme,
+            .AddJwtBearer(AuthSchemes.Default,
                 o => ConfigureJwtBearer(o, key, jwtOptions, validateLifetime: true))
-            .AddJwtBearer(IgnoreLifetimeScheme, o => ConfigureJwtBearer(o, key, jwtOptions, validateLifetime: false));
+            .AddJwtBearer(AuthSchemes.IgnoreLifetime,
+                o => ConfigureJwtBearer(o, key, jwtOptions, validateLifetime: false));
 
         return services;
     }

@@ -3,6 +3,7 @@ using CleanArchitecture.Application.Abstractions.DomainEvents;
 using CleanArchitecture.Application.Abstractions.EventBus;
 using CleanArchitecture.Application.Abstractions.Option;
 using CleanArchitecture.Infrastructure.Authentication;
+using CleanArchitecture.Infrastructure.Authorization;
 using CleanArchitecture.Infrastructure.Caching;
 using CleanArchitecture.Infrastructure.Database;
 using CleanArchitecture.Infrastructure.DomainEvents;
@@ -32,6 +33,7 @@ public static class DependencyInjection
             .AddCacheServices()
             .AddLockManager()
             .AddAuthenticationInternal(configuration)
+            .AddAuthorizationInternal()
             .AddRateLimiting(configuration);
 
     private static IServiceCollection AddAppOptions(
