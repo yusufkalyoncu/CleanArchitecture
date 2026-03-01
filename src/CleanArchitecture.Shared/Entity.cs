@@ -2,7 +2,7 @@ namespace CleanArchitecture.Shared;
 
 public abstract class Entity
 {
-    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid Id { get; } = Guid.NewGuid();
     
     private readonly List<IDomainEvent> _domainEvents = [];
 
@@ -13,7 +13,7 @@ public abstract class Entity
         _domainEvents.Clear();
     }
 
-    public void Raise(IDomainEvent domainEvent)
+    protected void Raise(IDomainEvent domainEvent)
     {
         _domainEvents.Add(domainEvent);
     }
