@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 
 namespace CleanArchitecture.WebApi.Extensions;
@@ -39,37 +39,32 @@ public static class DocsExtensions
             options.AddDocumentTransformer((document, _, _) =>
             {
                 document.Components ??= new OpenApiComponents();
-                document.Components.SecuritySchemes = new Dictionary<string, OpenApiSecurityScheme>
+
+                document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+
+                var scheme = new OpenApiSecurityScheme
                 {
-                    ["Bearer"] = new OpenApiSecurityScheme
-                    {
-                        Type = SecuritySchemeType.Http,
-                        Scheme = "bearer",
-                        BearerFormat = "JWT",
-                        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\""
-                    }
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    Description = "JWT Authorization header using the Bearer scheme."
                 };
 
-                document.SecurityRequirements = new List<OpenApiSecurityRequirement>
+                document.Components.SecuritySchemes["Bearer"] = scheme;
+
+                var securityRequirement = new OpenApiSecurityRequirement
                 {
-                    new OpenApiSecurityRequirement
-                    {
-                        [new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        }] = Array.Empty<string>()
-                    }
+                    [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
                 };
+
+                document.Security ??= new List<OpenApiSecurityRequirement>();
+                document.Security.Add(securityRequirement);
 
                 return Task.CompletedTask;
             });
         });
     }
-    
+
     public static void UseDocs(this WebApplication app)
     {
         var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();

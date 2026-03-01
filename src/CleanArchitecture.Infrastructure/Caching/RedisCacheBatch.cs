@@ -10,7 +10,7 @@ public sealed class RedisCacheBatch(IBatch batch, string instanceName) : ICacheB
 
     private string GetRedisKey(string key) => $"{instanceName}:{key}";
 
-    public void SetAsync<T>(string key, T value, TimeSpan? expiration = null)
+    public void SetAsync<T>(string key, T value, TimeSpan expiration)
     {
         var json = JsonSerializer.Serialize(value);
         _tasks.Add(batch.StringSetAsync(GetRedisKey(key), json, expiration));
