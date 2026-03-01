@@ -27,20 +27,20 @@ public readonly record struct Name
         {
             return Result.Failure<Name>(NameErrors.FirstNameCannotBeNullOrEmpty);
         }
-        
-        if(firstName.Length is < FirstNameMinLength or > FirstNameMaxLength)
-        {
-            return Result.Failure<Name>(NameErrors.FirstNameLengthInvalid);
-        }
-        
-        if(lastName.Length is < LastNameMinLength or > LastNameMaxLength)
-        {
-            return Result.Failure<Name>(NameErrors.LastNameLengthInvalid);
-        }
 
         if (string.IsNullOrWhiteSpace(lastName))
         {
             return Result.Failure<Name>(NameErrors.LastNameCannotBeNullOrEmpty);
+        }
+
+        if(firstName.Length is < FirstNameMinLength or > FirstNameMaxLength)
+        {
+            return Result.Failure<Name>(NameErrors.FirstNameLengthInvalid);
+        }
+
+        if(lastName.Length is < LastNameMinLength or > LastNameMaxLength)
+        {
+            return Result.Failure<Name>(NameErrors.LastNameLengthInvalid);
         }
 
         return new Name(firstName.Trim(), lastName.Trim());
