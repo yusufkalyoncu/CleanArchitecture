@@ -19,6 +19,11 @@ builder.Services
     .AddApplication(builder.Configuration)
     .AddInfrastructure(builder.Configuration);
 
+builder.Services.AddAppOptions(
+    builder.Configuration,
+    typeof(CleanArchitecture.Application.DependencyInjection).Assembly,
+    typeof(CleanArchitecture.Infrastructure.DependencyInjection).Assembly);
+
 builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
 
 var app = builder.Build();

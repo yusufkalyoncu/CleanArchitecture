@@ -1,7 +1,5 @@
-using System.Reflection;
 using CleanArchitecture.Application.Abstractions.DomainEvents;
 using CleanArchitecture.Application.Abstractions.EventBus;
-using CleanArchitecture.Application.Abstractions.Option;
 using CleanArchitecture.Infrastructure.Authentication;
 using CleanArchitecture.Infrastructure.Authorization;
 using CleanArchitecture.Infrastructure.Caching;
@@ -12,6 +10,7 @@ using CleanArchitecture.Infrastructure.Locking;
 using CleanArchitecture.Infrastructure.Outbox;
 using CleanArchitecture.Infrastructure.RateLimiting;
 using CleanArchitecture.Shared;
+using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -25,7 +24,7 @@ public static class DependencyInjection
     public static void AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         => services
             .AddEventDispatcher()
-            .AddAppOptions(configuration, typeof(PostgresOptions).Assembly)
+            .AddValidators()
             .AddEventBus()
             .AddOutboxServices()
             .AddDatabase(configuration)
@@ -36,31 +35,9 @@ public static class DependencyInjection
             .AddAuthorizationInternal()
             .AddRateLimiting(configuration);
 
-    private static IServiceCollection AddAppOptions(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        Assembly assembly)
+    private static IServiceCollection AddValidators(this IServiceCollection services)
     {
-        var optionTypes = assembly
-            .GetTypes()
-            .Where(t => typeof(IAppOption).IsAssignableFrom(t)
-                        && t is { IsClass: true, IsAbstract: false });
-
-        foreach (var type in optionTypes)
-        {
-            var sectionName = type.GetField("SectionName")?.GetValue(null)?.ToString();
-
-            if (string.IsNullOrWhiteSpace(sectionName))
-                continue;
-
-            var method = typeof(OptionsConfigurationServiceCollectionExtensions)
-                .GetMethods(BindingFlags.Static | BindingFlags.Public)
-                .First(m => m.Name == nameof(OptionsConfigurationServiceCollectionExtensions.Configure)
-                            && m.GetParameters().Length == 2)
-                .MakeGenericMethod(type);
-
-            method.Invoke(null, [services, configuration.GetSection(sectionName)]);
-        }
+        services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
 
         return services;
     }
