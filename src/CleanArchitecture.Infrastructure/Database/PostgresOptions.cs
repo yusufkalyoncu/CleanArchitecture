@@ -7,22 +7,22 @@ public sealed class PostgresOptions : IAppOption
 {
     public const string SectionName = "PostgresOptions";
 
-    public string UserId { get; init; } = null!;
+    public string Username { get; init; } = null!;
     public string Password { get; init; } = null!;
     public string Host { get; init; } = null!;
     public int Port { get; init; }
     public string Database { get; init; } = null!;
 
     public string ConnectionString =>
-        $"User ID={UserId};Password={Password};Host={Host};Port={Port};Database={Database};";
+        $"User ID={Username};Password={Password};Host={Host};Port={Port};Database={Database};";
 }
 
 internal sealed class PostgresOptionsValidator : AbstractValidator<PostgresOptions>
 {
     public PostgresOptionsValidator()
     {
-        RuleFor(x => x.UserId)
-            .NotEmpty().WithMessage("Database UserId is required.");
+        RuleFor(x => x.Username)
+            .NotEmpty().WithMessage("Database Username is required.");
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Database Password is required.");
