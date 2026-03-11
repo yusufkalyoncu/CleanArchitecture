@@ -4,7 +4,7 @@ using CleanArchitecture.Shared;
 
 namespace CleanArchitecture.Domain.Users;
 
-public class User : Entity, IAuditable
+public class User : AggregateRoot, IAuditable
 {
     public Email Email { get; private set; }
     public Name Name { get; private set; }

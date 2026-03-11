@@ -45,6 +45,7 @@ public static class DependencyInjection
     private static IServiceCollection AddEventDispatcher(this IServiceCollection services)
     {
         services.AddTransient<IDomainEventsDispatcher, DomainEventsDispatcher>();
+        services.AddScoped<DomainEventDispatcherInterceptor>();
 
         return services;
     }

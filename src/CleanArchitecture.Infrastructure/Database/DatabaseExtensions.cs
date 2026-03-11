@@ -1,5 +1,6 @@
 using CleanArchitecture.Application.Abstractions.Database;
 using CleanArchitecture.Infrastructure.Audit;
+using CleanArchitecture.Infrastructure.DomainEvents;
 using CleanArchitecture.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -29,11 +30,15 @@ public static class DatabaseExtensions
         {
             var outboxInterceptor = sp.GetRequiredService<OutboxInsertInterceptor>();
             var auditInterceptor = sp.GetRequiredService<AuditInterceptor>();
+            var domainEventDispatcherInterceptor = sp.GetRequiredService<DomainEventDispatcherInterceptor>();
 
             options.UseNpgsql(postgresOptions.ConnectionString, npgsqlOptions =>
                     npgsqlOptions.MigrationsHistoryTable(HistoryRepository.DefaultTableName, DatabaseSchemas.Default))
                 .UseSnakeCaseNamingConvention()
-                .AddInterceptors(outboxInterceptor, auditInterceptor);
+                .AddInterceptors(
+                    auditInterceptor,
+                    domainEventDispatcherInterceptor,
+                    outboxInterceptor);
         });
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());

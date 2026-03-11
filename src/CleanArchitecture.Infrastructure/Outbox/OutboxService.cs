@@ -15,6 +15,5 @@ public sealed class OutboxService(ApplicationDbContext dbContext) : IOutboxServi
             JsonSerializer.Serialize(message));
 
         await dbContext.OutboxMessages.AddAsync(outboxMessage, cancellationToken);
-        var count = dbContext.ChangeTracker.Entries<OutboxMessage>().Count();
     }
 }
