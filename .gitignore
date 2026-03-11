@@ -77,3 +77,6 @@ ehthumbs.db
 
 # Appsettings
 appsettings.Development.json
+
+#Local variables
+.env

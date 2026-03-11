@@ -1,0 +1,85 @@
+﻿services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: prod_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PostgresOptions__Username}
+      POSTGRES_PASSWORD: ${PostgresOptions__Password}
+      POSTGRES_DB: ${PostgresOptions__Database}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PostgresOptions__Username} -d ${PostgresOptions__Database}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: prod_redis
+    restart: unless-stopped
+    volumes:
+      - redis_prod_data:/data
+    command: redis-server --save 60 1 --loglevel warning --requirepass ${RedisOptions__Password}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${RedisOptions__Password}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  seq:
+    image: datalust/seq:2025.2
+    container_name: prod_seq
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_ADMINPASSWORD: ${SEQ_ADMIN_PASSWORD}
+    volumes:
+      - seq_prod_data:/data
+    expose:
+      - "80"
+      - "5341"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:80/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/${GITHUB_REPOSITORY}:${IMAGE_TAG:-latest}
+    container_name: prod_backend
+    restart: unless-stopped
+    
+    expose:
+      - "8080"
+
+    env_file:
+      - .env
+
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - PostgresOptions__Host=postgres
+      - RedisOptions__Host=redis
+      - RedisOptions__Password=${RedisOptions__Password}
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seq:
+        condition: service_healthy
+
+    networks:
+      - default
+      - proxy-network
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
+  seq_prod_data:
+
+networks:
+  proxy-network:
+    external: true
