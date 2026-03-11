@@ -23,26 +23,39 @@ public readonly record struct Name
 
     public static Result<Name> Create(string firstName, string lastName)
     {
+        firstName = firstName.Trim();
+        lastName = lastName.Trim();
+
         if (string.IsNullOrWhiteSpace(firstName))
         {
-            return Result.Failure<Name>(NameErrors.FirstNameCannotBeNullOrEmpty);
+            return Result.Failure<Name>(UserErrors.Name.FirstName.Empty);
         }
 
         if (string.IsNullOrWhiteSpace(lastName))
         {
-            return Result.Failure<Name>(NameErrors.LastNameCannotBeNullOrEmpty);
+            return Result.Failure<Name>(UserErrors.Name.LastName.Empty);
         }
 
-        if(firstName.Length is < FirstNameMinLength or > FirstNameMaxLength)
+        if(firstName.Length < FirstNameMinLength)
         {
-            return Result.Failure<Name>(NameErrors.FirstNameLengthInvalid);
+            return Result.Failure<Name>(UserErrors.Name.FirstName.TooShort);
         }
 
-        if(lastName.Length is < LastNameMinLength or > LastNameMaxLength)
+        if(firstName.Length > FirstNameMaxLength)
         {
-            return Result.Failure<Name>(NameErrors.LastNameLengthInvalid);
+            return Result.Failure<Name>(UserErrors.Name.FirstName.TooLong);
         }
 
-        return new Name(firstName.Trim(), lastName.Trim());
+        if(lastName.Length < LastNameMinLength)
+        {
+            return Result.Failure<Name>(UserErrors.Name.LastName.TooShort);
+        }
+
+        if(lastName.Length > LastNameMaxLength)
+        {
+            return Result.Failure<Name>(UserErrors.Name.LastName.TooLong);
+        }
+
+        return new Name(firstName, lastName);
     }
 }

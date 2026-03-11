@@ -10,24 +10,27 @@ internal sealed class UserRegisterCommandValidator : AbstractValidator<UserRegis
         RuleFor(x => x.Email)
             .NotEmpty()
             .MaximumLength(Email.MaxLength)
-            .WithErrorCode(EmailErrors.LengthExceeded.ErrorCode);
+            .WithErrorCode(UserErrors.Email.TooLong.ErrorCode);
 
         RuleFor(x => x.FirstName)
             .NotEmpty()
             .MinimumLength(Name.FirstNameMinLength)
+            .WithErrorCode(UserErrors.Name.FirstName.TooShort.ErrorCode)
             .MaximumLength(Name.FirstNameMaxLength)
-            .WithErrorCode(NameErrors.FirstNameLengthInvalid.ErrorCode);
+            .WithErrorCode(UserErrors.Name.FirstName.TooLong.ErrorCode);
 
         RuleFor(x => x.LastName)
             .NotEmpty()
             .MinimumLength(Name.LastNameMinLength)
+            .WithErrorCode(UserErrors.Name.LastName.TooShort.ErrorCode)
             .MaximumLength(Name.LastNameMaxLength)
-            .WithErrorCode(NameErrors.LastNameLengthInvalid.ErrorCode);
+            .WithErrorCode(UserErrors.Name.LastName.TooLong.ErrorCode);
         
         RuleFor(x => x.Password)
             .NotEmpty()
             .MinimumLength(Password.MinLength)
+            .WithErrorCode(UserErrors.Password.TooShort.ErrorCode)
             .MaximumLength(Password.MaxLength)
-            .WithErrorCode(PasswordErrors.InvalidLength.ErrorCode);
+            .WithErrorCode(UserErrors.Password.TooLong.ErrorCode);
     }
 }

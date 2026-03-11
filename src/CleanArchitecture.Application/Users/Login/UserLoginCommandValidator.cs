@@ -10,12 +10,13 @@ internal sealed class UserLoginCommandValidator : AbstractValidator<UserLoginCom
         RuleFor(x => x.Email)
             .NotEmpty()
             .MaximumLength(Email.MaxLength)
-            .WithErrorCode(EmailErrors.LengthExceeded.ErrorCode);
+            .WithErrorCode(UserErrors.Email.TooLong.ErrorCode);
         
         RuleFor(x => x.Password)
             .NotEmpty()
             .MinimumLength(Password.MinLength)
+            .WithErrorCode(UserErrors.Password.TooShort.ErrorCode)
             .MaximumLength(Password.MaxLength)
-            .WithErrorCode(PasswordErrors.InvalidLength.ErrorCode);
+            .WithErrorCode(UserErrors.Password.TooLong.ErrorCode);
     }
 }

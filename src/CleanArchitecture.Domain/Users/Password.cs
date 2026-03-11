@@ -21,14 +21,19 @@ public readonly record struct Password
     {
         if (string.IsNullOrWhiteSpace(plainText))
         {
-            return Result.Failure<Password>(PasswordErrors.CannotBeNullOrEmpty);
+            return Result.Failure<Password>(UserErrors.Password.Empty);
         }
         
-        if (plainText.Length is < MinLength or > MaxLength)
+        if (plainText.Length < MinLength)
         {
-            return Result.Failure<Password>(PasswordErrors.InvalidLength);
+            return Result.Failure<Password>(UserErrors.Password.TooShort);
         }
-        
+
+        if (plainText.Length > MaxLength)
+        {
+            return Result.Failure<Password>(UserErrors.Password.TooLong);
+        }
+
         var hashedValue = HashPassword(plainText);
         return new Password(hashedValue);
     }

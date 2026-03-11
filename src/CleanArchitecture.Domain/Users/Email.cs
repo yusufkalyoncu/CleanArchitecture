@@ -17,17 +17,17 @@ public readonly record struct Email
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return Result.Failure<Email>(EmailErrors.CannotBeNullOrEmpty);
+            return Result.Failure<Email>(UserErrors.Email.Empty);
         }
         
         if (value.Length > MaxLength)
         {
-            return Result.Failure<Email>(EmailErrors.LengthExceeded);
+            return Result.Failure<Email>(UserErrors.Email.TooLong);
         }
 
         if (!new EmailAddressAttribute().IsValid(value))
         {
-            return Result.Failure<Email>(EmailErrors.InvalidFormat);
+            return Result.Failure<Email>(UserErrors.Email.InvalidFormat);
         }
         
         return new Email(value);

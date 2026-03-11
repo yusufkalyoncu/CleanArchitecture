@@ -30,7 +30,7 @@ internal sealed class UserRefreshTokenCommandHandler(
 
         if (!consumeRefreshTokenResult.IsSuccess)
         {
-            return Result.Failure<UserRefreshTokenCommandResponse>(UserErrors.InvalidToken);
+            return Result.Failure<UserRefreshTokenCommandResponse>(UserErrors.Auth.InvalidToken);
         }
 
         if (!string.IsNullOrEmpty(consumeRefreshTokenResult.CachedAccessToken) &&
@@ -48,7 +48,7 @@ internal sealed class UserRefreshTokenCommandHandler(
 
         if (user is null)
         {
-            return Result.Failure<UserRefreshTokenCommandResponse>(UserErrors.InvalidToken);
+            return Result.Failure<UserRefreshTokenCommandResponse>(UserErrors.Auth.InvalidToken);
         }
 
         var (newJti, newAccessToken) = tokenProvider.CreateAccessToken(user);

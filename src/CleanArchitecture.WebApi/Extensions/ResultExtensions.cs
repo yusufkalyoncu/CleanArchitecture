@@ -30,7 +30,7 @@ public static class ResultExtensions
 
         return Results.Problem(
             title: GetTitle(result.Error),
-            detail: GetDetail(result.Error, localizer),
+            detail: result.Error.Localize(localizer),
             type: GetType(result.Error.Type),
             statusCode: GetStatusCode(result.Error.Type),
             extensions: GetErrors(result, localizer));
@@ -46,20 +46,6 @@ public static class ResultExtensions
                 ErrorType.TooManyRequests => "Too Many Request",
                 _ => "Server failure"
             };
-
-        static string GetDetail(Error error, IStringLocalizer<Lang> localizer)
-        {
-            return error.Type switch
-            {
-                ErrorType.BadRequest => localizer[error.ErrorCode],
-                ErrorType.Unauthorized => localizer[error.ErrorCode],
-                ErrorType.Forbidden => localizer[error.ErrorCode],
-                ErrorType.NotFound => localizer[error.ErrorCode],
-                ErrorType.Conflict => localizer[error.ErrorCode],
-                ErrorType.TooManyRequests => localizer[error.ErrorCode],
-                _ => localizer["Error.Unexpected"]
-            };
-        }
 
         static string GetType(ErrorType errorType) =>
             errorType switch
@@ -95,7 +81,7 @@ public static class ResultExtensions
                 .Select(e => new
                 {
                     Code = e.ErrorCode,
-                    Description = localizer[e.ErrorCode]
+                    Description = e.Localize(localizer)
                 })
                 .ToArray();
 
@@ -104,5 +90,19 @@ public static class ResultExtensions
                 { "errors", localizedErrors }
             };
         }
+    }
+
+    private static string Localize(this Error error, IStringLocalizer<Lang> localizer)
+    {
+        if (!Enum.IsDefined(error.Type) || error.Type == ErrorType.None)
+            return localizer[Error.Unexpected.ErrorCode].Value;
+
+        var template = localizer[error.ErrorCode].Value;
+
+        if (error.Args is not { Count: > 0 })
+            return template;
+
+        return error.Args.Aggregate(template, (current, arg) =>
+            current.Replace($"{{{arg.Key}}}", arg.Value?.ToString()));
     }
 }

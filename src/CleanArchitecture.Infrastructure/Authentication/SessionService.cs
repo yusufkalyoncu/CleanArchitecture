@@ -20,7 +20,7 @@ public sealed class SessionService(
     public async Task<Result> CreateLoginSessionAsync(Guid userId, string jti, string refreshToken)
     {
         var activeCount = await GetActiveSessionCountInternalAsync(userId);
-        if (activeCount >= MaxSessions) return Result.Failure(UserErrors.MaxSessionsReached);
+        if (activeCount >= MaxSessions) return Result.Failure(UserErrors.Auth.MaxSessionsReached);
 
         var batch = cacheService.CreateBatch();
         batch.SetAsync(RefreshTokenKey(userId, jti), refreshToken, _jwtOption.RefreshTokenLifetime);
