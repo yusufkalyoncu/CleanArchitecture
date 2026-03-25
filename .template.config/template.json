@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Yusuf Kalyoncu",
+  "classifications": [ "Web", "WebAPI", "Clean Architecture" ],
+  "name": "Clean Architecture Template",
+  "identity": "CleanArchitecture.Template",
+  "shortName": "cleanarchitecture",
+  "tags": {
+    "language": "C#",
+    "type": "project",
+    "framework": ".NET 10"
+  },
+  "sourceName": "CleanArchitecture",
+  "preferNameDirectory": true,
+  "exclude": [
+    "**/[b|B]in/**",
+    "**/[o|O]bj/**",
+    "**/.vs/**",
+    "**/.git/**"
+  ]
+}
