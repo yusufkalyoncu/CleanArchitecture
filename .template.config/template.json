@@ -12,10 +12,19 @@
   },
   "sourceName": "CleanArchitecture",
   "preferNameDirectory": true,
-  "exclude": [
-    "**/[b|B]in/**",
-    "**/[o|O]bj/**",
-    "**/.vs/**",
-    "**/.git/**"
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "exclude": [
+            "**/[b|B]in/**",
+            "**/[o|O]bj/**",
+            "**/.vs/**",
+            "**/.git/**",
+            "**/.git"
+          ]
+        }
+      ]
+    }
   ]
 }
