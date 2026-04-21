@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CleanArchitecture.Shared;
 using CleanArchitecture.Shared.Resources.Languages;
 using Microsoft.Extensions.Localization;
@@ -72,25 +73,25 @@ public static class ResultExtensions
 
         static Dictionary<string, object?>? GetErrors(Result result, IStringLocalizer<Lang> localizer)
         {
-            if (result.Error is not ValidationError validationError)
+            var errors = result.Error switch
             {
-                return null;
-            }
-            
-            var localizedErrors = validationError.Errors
-                .Select(e => new
-                {
-                    Code = e.ErrorCode,
-                    Description = e.Localize(localizer)
-                })
-                .ToArray();
+                ValidationError v => v.Errors
+                    .Select(e => new ErrorDetail(NormalizeField(e.Field), e.Localize(localizer)))
+                    .ToArray(),
 
-            return new Dictionary<string, object?>
-            {
-                { "errors", localizedErrors }
+                var err when NormalizeField(err.Field) is { } field =>
+                    new[] { new ErrorDetail(field, err.Localize(localizer)) },
+
+                _ => null
             };
+
+            return errors is not null
+                ? new Dictionary<string, object?> { ["errors"] = errors }
+                : null;
         }
     }
+
+    private record ErrorDetail(string? Field, string Message);
 
     private static string Localize(this Error error, IStringLocalizer<Lang> localizer)
     {
@@ -104,5 +105,32 @@ public static class ResultExtensions
 
         return error.Args.Aggregate(template, (current, arg) =>
             current.Replace($"{{{arg.Key}}}", arg.Value?.ToString()));
+    }
+
+    private static string? NormalizeField(string? field)
+    {
+        if (string.IsNullOrWhiteSpace(field))
+        {
+            return null;
+        }
+
+        return string.Join(
+            ".",
+            field.Split('.')
+                .Select(static segment =>
+                {
+                    var indexStart = segment.IndexOf('[');
+                    if (indexStart < 0)
+                    {
+                        return JsonNamingPolicy.CamelCase.ConvertName(segment);
+                    }
+
+                    var propertyName = segment[..indexStart];
+                    var suffix = segment[indexStart..];
+
+                    return string.IsNullOrEmpty(propertyName)
+                        ? segment
+                        : $"{JsonNamingPolicy.CamelCase.ConvertName(propertyName)}{suffix}";
+                }));
     }
 }

@@ -6,16 +6,18 @@ public record Error
 
     public string ErrorCode { get; }
     public ErrorType Type { get; }
+    public string? Field { get; }
     public Dictionary<string, object?>? Args { get; private init; }
 
     #endregion
 
     #region Constructor
 
-    internal Error(string errorCode, ErrorType type)
+    internal Error(string errorCode, ErrorType type, string? field = null)
     {
         ErrorCode = errorCode;
         Type = type;
+        Field = field;
     }
 
     #endregion
@@ -26,42 +28,73 @@ public record Error
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;
-        return ErrorCode == other.ErrorCode && Type == other.Type;
+        return ErrorCode == other.ErrorCode && Type == other.Type && Field == other.Field;
     }
 
-    public override int GetHashCode() => HashCode.Combine(ErrorCode, Type);
+    public override int GetHashCode() => HashCode.Combine(ErrorCode, Type, Field);
 
     #endregion
 
     #region Factory Methods
 
-    private static Error Create(string errorCode, ErrorType type, Dictionary<string, object?>? args) =>
-        new(errorCode, type) { Args = args };
+    private static Error Create(
+        string errorCode,
+        ErrorType type,
+        Dictionary<string, object?>? args,
+        string? field) =>
+        new(errorCode, type, field) { Args = args };
 
     public static readonly Error None = new(string.Empty, ErrorType.None);
     public static readonly Error NullValue = new("General.Null", ErrorType.BadRequest);
     public static readonly Error Unexpected = new("General.Unexpected", ErrorType.InternalServerError);
 
-    public static Error Validation(string errorCode, Dictionary<string, object?>? args = null) =>
-        Create(errorCode, ErrorType.BadRequest, args);
-    
-    public static Error BadRequest(string errorCode, Dictionary<string, object?>? args = null) =>
-        Create(errorCode, ErrorType.BadRequest, args);
+    public static Error Validation(
+        string errorCode,
+        Dictionary<string, object?>? args = null,
+        string? field = null) =>
+        Create(errorCode, ErrorType.BadRequest, args, field);
 
-    public static Error NotFound(string errorCode, Dictionary<string, object?>? args = null) =>
-        Create(errorCode, ErrorType.NotFound, args);
+    public static Error BadRequest(
+        string errorCode,
+        Dictionary<string, object?>? args = null,
+        string? field = null) =>
+        Create(errorCode, ErrorType.BadRequest, args, field);
 
-    public static Error Unauthorized(string errorCode, Dictionary<string, object?>? args = null) =>
-        Create(errorCode, ErrorType.Unauthorized, args);
+    public static Error NotFound(
+        string errorCode,
+        Dictionary<string, object?>? args = null,
+        string? field = null) =>
+        Create(errorCode, ErrorType.NotFound, args, field);
 
-    public static Error Forbidden(string errorCode, Dictionary<string, object?>? args = null) =>
-        Create(errorCode, ErrorType.Forbidden, args);
+    public static Error Unauthorized(
+        string errorCode,
+        Dictionary<string, object?>? args = null,
+        string? field = null) =>
+        Create(errorCode, ErrorType.Unauthorized, args, field);
 
-    public static Error Conflict(string errorCode, Dictionary<string, object?>? args = null) =>
-        Create(errorCode, ErrorType.Conflict, args);
+    public static Error Forbidden(
+        string errorCode,
+        Dictionary<string, object?>? args = null,
+        string? field = null) =>
+        Create(errorCode, ErrorType.Forbidden, args, field);
 
-    public static Error TooManyRequests(string errorCode, Dictionary<string, object?>? args = null) =>
-        Create(errorCode, ErrorType.TooManyRequests, args);
+    public static Error Conflict(
+        string errorCode,
+        Dictionary<string, object?>? args = null,
+        string? field = null) =>
+        Create(errorCode, ErrorType.Conflict, args, field);
+
+    public static Error TooManyRequests(
+        string errorCode,
+        Dictionary<string, object?>? args = null,
+        string? field = null) =>
+        Create(errorCode, ErrorType.TooManyRequests, args, field);
+
+    public static Error InternalServerError(
+        string errorCode,
+        Dictionary<string, object?>? args = null,
+        string? field = null) =>
+        Create(errorCode, ErrorType.InternalServerError, args, field);
 
     #endregion
 }
