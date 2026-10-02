@@ -51,7 +51,12 @@ public sealed class SessionService(
         return new ConsumeResult(removed);
     }
 
-    public async Task RotateSessionAsync(Guid userId, string oldJti, string newJti, string newAt, string newRt)
+    public async Task RotateSessionAsync(
+        Guid userId,
+        string oldJti,
+        string newJti,
+        string newAccessToken,
+        string newRefreshToken)
     {
         var batch = cacheService.CreateBatch();
         var score = GetExpiryScore();
@@ -59,13 +64,13 @@ public sealed class SessionService(
         batch.RemoveAsync(RefreshTokenKey(userId, oldJti));
         batch.SortedSetRemoveAsync(UserSessionsKey(userId), oldJti);
 
-        batch.SetAsync(RefreshTokenKey(userId, newJti), newRt, _jwtOption.RefreshTokenLifetime);
+        batch.SetAsync(RefreshTokenKey(userId, newJti), newRefreshToken, _jwtOption.RefreshTokenLifetime);
         batch.SortedSetAddAsync(UserSessionsKey(userId), newJti, score);
 
         batch.SetAsync(GracePeriodKey(oldJti), new ConsumeResult(
             true,
-            newAt,
-            newRt), _jwtOption.GracePeriodLifeTime);
+            newAccessToken,
+            newRefreshToken), _jwtOption.GracePeriodLifeTime);
 
         await batch.ExecuteAsync();
     }
