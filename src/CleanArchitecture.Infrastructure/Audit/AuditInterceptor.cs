@@ -3,6 +3,7 @@ using System.Text.Json;
 using CleanArchitecture.Application.Abstractions.Authentication;
 using CleanArchitecture.Domain.Audit;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace CleanArchitecture.Infrastructure.Audit;
@@ -16,7 +17,8 @@ public sealed class AuditInterceptor(IUserContext userContext) : SaveChangesInte
         InterceptionResult<int> result,
         CancellationToken cancellationToken = default)
     {
-        if (eventData.Context is null) return base.SavingChangesAsync(eventData, result, cancellationToken);
+        if (eventData.Context is null) 
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
 
         var auditEntries = CaptureAuditDetails(eventData.Context);
 
@@ -35,60 +37,80 @@ public sealed class AuditInterceptor(IUserContext userContext) : SaveChangesInte
 
         foreach (var entry in context.ChangeTracker.Entries())
         {
-            if (entry.Entity is not IAuditable || entry.State is EntityState.Detached or EntityState.Unchanged)
-                continue;
+            if (!IsAuditable(entry)) continue;
 
-            var oldValues = new Dictionary<string, object?>();
-            var newValues = new Dictionary<string, object?>();
-            var changedColumns = new List<string>();
-
-            foreach (var property in entry.Properties)
-            {
-                var name = property.Metadata.Name;
-                if (property.Metadata.IsPrimaryKey())
-                {
-                    newValues[name] = property.CurrentValue;
-                    continue;
-                }
-
-                bool isMasked = property.Metadata.PropertyInfo?.GetCustomAttribute<AuditMaskAttribute>() is not null;
-                ProcessProperty(entry.State, property.IsModified, name, property.OriginalValue, property.CurrentValue, isMasked, oldValues, newValues, changedColumns);
-            }
-
-            foreach (var complexProperty in entry.ComplexProperties)
-            {
-                foreach (var prop in complexProperty.Properties)
-                {
-                    var name = $"{complexProperty.Metadata.Name}_{prop.Metadata.Name}";
-                    bool isMasked = prop.Metadata.PropertyInfo?.GetCustomAttribute<AuditMaskAttribute>() is not null;
-
-                    ProcessProperty(entry.State, prop.IsModified, name, prop.OriginalValue, prop.CurrentValue, isMasked, oldValues, newValues, changedColumns);
-                }
-            }
-
-            var auditLog = new AuditLog
-            {
-                Id = Guid.NewGuid(),
-                UserId = userContext.Id != Guid.Empty ? userContext.Id : null,
-                EntityName = entry.Metadata.ClrType.Name,
-                Action = entry.State.ToString(),
-                TimestampUtc = DateTime.UtcNow,
-                IpAddress = userContext.IpAddress,
-                UserAgent = userContext.UserAgent,
-                OldValues = oldValues.Count > 0 ? JsonSerializer.Serialize(oldValues) : null,
-                NewValues = newValues.Count > 0 ? JsonSerializer.Serialize(newValues) : null,
-                ChangedColumns = changedColumns.Count > 0 ? string.Join(", ", changedColumns) : null
-            };
-
-            auditLogs.Add(auditLog);
+            auditLogs.Add(CreateAuditLog(entry));
         }
 
         return auditLogs;
     }
 
+    private static bool IsAuditable(EntityEntry entry)
+    {
+        return entry is { Entity: IAuditable, State: not EntityState.Detached and not EntityState.Unchanged };
+    }
+
+    private readonly record struct AuditContext(
+        Dictionary<string, object?> OldValues,
+        Dictionary<string, object?> NewValues,
+        List<string> ChangedColumns);
+
+    private AuditLog CreateAuditLog(EntityEntry entry)
+    {
+        var context = new AuditContext(new(), new(), new());
+
+        ProcessProperties(entry, context);
+        ProcessComplexProperties(entry, context);
+
+        return new AuditLog
+        {
+            Id = Guid.NewGuid(),
+            UserId = userContext.Id != Guid.Empty ? userContext.Id : null,
+            EntityName = entry.Metadata.ClrType.Name,
+            Action = entry.State.ToString(),
+            TimestampUtc = DateTime.UtcNow,
+            IpAddress = userContext.IpAddress,
+            UserAgent = userContext.UserAgent,
+            OldValues = context.OldValues.Count > 0 ? JsonSerializer.Serialize(context.OldValues) : null,
+            NewValues = context.NewValues.Count > 0 ? JsonSerializer.Serialize(context.NewValues) : null,
+            ChangedColumns = context.ChangedColumns.Count > 0 ? string.Join(", ", context.ChangedColumns) : null
+        };
+    }
+
+    private static void ProcessProperties(EntityEntry entry, AuditContext context)
+    {
+        foreach (var property in entry.Properties)
+        {
+            var name = property.Metadata.Name;
+            
+            if (property.Metadata.IsPrimaryKey())
+            {
+                context.NewValues[name] = property.CurrentValue;
+                continue;
+            }
+
+            bool isMasked = property.Metadata.PropertyInfo?.GetCustomAttribute<AuditMaskAttribute>() is not null;
+            ProcessProperty(entry.State, property.IsModified, name, property.OriginalValue, property.CurrentValue, isMasked, context);
+        }
+    }
+
+    private static void ProcessComplexProperties(EntityEntry entry, AuditContext context)
+    {
+        foreach (var complexProperty in entry.ComplexProperties)
+        {
+            foreach (var prop in complexProperty.Properties)
+            {
+                var name = $"{complexProperty.Metadata.Name}_{prop.Metadata.Name}";
+                bool isMasked = prop.Metadata.PropertyInfo?.GetCustomAttribute<AuditMaskAttribute>() is not null;
+
+                ProcessProperty(entry.State, prop.IsModified, name, prop.OriginalValue, prop.CurrentValue, isMasked, context);
+            }
+        }
+    }
+
     private static void ProcessProperty(
         EntityState state, bool isModified, string name, object? original, object? current, bool isMasked,
-        Dictionary<string, object?> oldValues, Dictionary<string, object?> newValues, List<string> changedColumns)
+        AuditContext context)
     {
         var originalFormatted = FormatValue(original, isMasked);
         var currentFormatted = FormatValue(current, isMasked);
@@ -96,20 +118,15 @@ public sealed class AuditInterceptor(IUserContext userContext) : SaveChangesInte
         switch (state)
         {
             case EntityState.Added:
-                newValues[name] = currentFormatted;
+                context.NewValues[name] = currentFormatted;
                 break;
-
             case EntityState.Deleted:
-                oldValues[name] = originalFormatted;
+                context.OldValues[name] = originalFormatted;
                 break;
-
-            case EntityState.Modified:
-                if (isModified)
-                {
-                    changedColumns.Add(name);
-                    oldValues[name] = originalFormatted;
-                    newValues[name] = currentFormatted;
-                }
+            case EntityState.Modified when isModified:
+                context.ChangedColumns.Add(name);
+                context.OldValues[name] = originalFormatted;
+                context.NewValues[name] = currentFormatted;
                 break;
         }
     }
