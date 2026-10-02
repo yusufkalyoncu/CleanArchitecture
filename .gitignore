@@ -80,3 +80,6 @@ appsettings.Development.json
 
 #Local variables
 .env
+
+# SonarQube
+.sonarqube/
