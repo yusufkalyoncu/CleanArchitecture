@@ -138,7 +138,7 @@ public sealed class RedisCacheService : IDistributedCacheService
     {
         try
         {
-            var server = _redis.GetServer(_redis.GetEndPoints().First());
+            var server = _redis.GetServer(_redis.GetEndPoints()[0]);
             var pattern = $"{_instanceName}:*";
             var keysToDelete = new List<RedisKey>();
 
@@ -236,7 +236,7 @@ public sealed class RedisCacheService : IDistributedCacheService
     public async Task<long> RemoveOrderedSetRangeByScoreAsync(string key, double minScore, double maxScore, CancellationToken cancellationToken = default)
         => await _database.SortedSetRemoveRangeByScoreAsync(GetRedisKey(key), minScore, maxScore);
 
-    public async Task<string[]> GetOrderedSetRangeByScoreAsync(string key, double minScore, double maxScore, CancellationToken cancellationToken = default)
+    public async Task<string[]> GetOrderedSetRangeByScoreAsync(string key, double minScore = double.NegativeInfinity, double maxScore = double.PositiveInfinity, CancellationToken cancellationToken = default)
     {
         var result = await _database.SortedSetRangeByScoreAsync(GetRedisKey(key), minScore, maxScore);
         return result.Select(m => m.ToString()).ToArray();
