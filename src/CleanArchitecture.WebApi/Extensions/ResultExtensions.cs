@@ -91,7 +91,7 @@ public static class ResultExtensions
         }
     }
 
-    private record ErrorDetail(string? Field, string Message);
+    private sealed record ErrorDetail(string? Field, string Message);
 
     private static string Localize(this Error error, IStringLocalizer<Lang> localizer)
     {
