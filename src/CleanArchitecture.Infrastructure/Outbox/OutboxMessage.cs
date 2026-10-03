@@ -6,8 +6,8 @@ public sealed class OutboxMessage
     public string Type { get; init; } = null!;
     public string Content { get; init; } = null!;
     public DateTime OccurredOnUtc { get; init; }
-    public DateTime? ProcessedOnUtc { get; private set; }
-    public string? Error { get; private set; }
+    public DateTime? ProcessedOnUtc { get; init; }
+    public string? Error { get; init; }
 
     private OutboxMessage() { }
 
