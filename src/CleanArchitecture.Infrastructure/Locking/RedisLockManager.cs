@@ -17,7 +17,7 @@ public class RedisLockManager(
     private readonly string _instanceName = options.Value.InstanceName;
 
     private string GetRedisKey(string resource) => $"{_instanceName}:lock:{resource}";
-    private string CreateLockToken() => Guid.NewGuid().ToString("N");
+    private static string CreateLockToken() => Guid.NewGuid().ToString("N");
 
     public async Task<bool> TryExecuteWithLockAsync(
         string resource,
@@ -79,11 +79,6 @@ public class RedisLockManager(
         {
             await action(cancellationToken);
             return true;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error executing action with lock: {Resource}", resource);
-            throw;
         }
         finally
         {
