@@ -74,7 +74,10 @@ internal sealed class OutboxProcessor(
 
             await transaction.CommitAsync(cancellationToken);
 
-            logger.LogInformation("{Count} messages processed.", messages.Count);
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                logger.LogInformation("{Count} messages processed.", messages.Count);
+            }
             return messages.Count;
         }
         catch (Exception)
