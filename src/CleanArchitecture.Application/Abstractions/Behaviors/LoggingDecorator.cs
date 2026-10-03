@@ -12,22 +12,28 @@ internal static class LoggingDecorator
         : ICommandHandler<TCommand, TResponse>
         where TCommand : ICommand<TResponse>
     {
+        private static readonly string CommandName = typeof(TCommand).Name;
+
         public async Task<Result<TResponse>> Handle(TCommand command, CancellationToken cancellationToken)
         {
-            string commandName = typeof(TCommand).Name;
-
-            logger.LogInformation("Processing command {Command}", commandName);
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                logger.LogInformation("Processing command {Command}", CommandName);
+            }
 
             Result<TResponse> result = await innerHandler.Handle(command, cancellationToken);
 
             if (result.IsSuccess)
             {
-                logger.LogInformation("Completed command {Command}", commandName);
+                if (logger.IsEnabled(LogLevel.Information))
+                {
+                    logger.LogInformation("Completed command {Command}", CommandName);
+                }
             }
             else
             {
                 logger.LogError("Failed command {Command} with error ({StatusCode}): {ErrorMessage}",
-                    commandName,
+                    CommandName,
                     result.Error.Type,
                     result.Error.ErrorCode);
             }
@@ -42,22 +48,28 @@ internal static class LoggingDecorator
         : ICommandHandler<TCommand>
         where TCommand : ICommand
     {
+        private static readonly string CommandName = typeof(TCommand).Name;
+
         public async Task<Result> Handle(TCommand command, CancellationToken cancellationToken)
         {
-            string commandName = typeof(TCommand).Name;
-
-            logger.LogInformation("Processing command {Command}", commandName);
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                logger.LogInformation("Processing command {Command}", CommandName);
+            }
 
             Result result = await innerHandler.Handle(command, cancellationToken);
 
             if (result.IsSuccess)
             {
-                logger.LogInformation("Completed command {Command}", commandName);
+                if (logger.IsEnabled(LogLevel.Information))
+                {
+                    logger.LogInformation("Completed command {Command}", CommandName);
+                }
             }
             else
             {
                 logger.LogError("Failed command {Command} with error ({StatusCode}): {ErrorMessage}",
-                    commandName,
+                    CommandName,
                     result.Error.Type,
                     result.Error.ErrorCode);
             }
@@ -72,22 +84,28 @@ internal static class LoggingDecorator
         : IQueryHandler<TQuery, TResponse>
         where TQuery : IQuery<TResponse>
     {
+        private static readonly string QueryName = typeof(TQuery).Name;
+
         public async Task<Result<TResponse>> Handle(TQuery query, CancellationToken cancellationToken)
         {
-            string queryName = typeof(TQuery).Name;
-
-            logger.LogInformation("Processing query {Query}", queryName);
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                logger.LogInformation("Processing query {Query}", QueryName);
+            }
 
             Result<TResponse> result = await innerHandler.Handle(query, cancellationToken);
 
             if (result.IsSuccess)
             {
-                logger.LogInformation("Completed query {Query}", queryName);
+                if (logger.IsEnabled(LogLevel.Information))
+                {
+                    logger.LogInformation("Completed query {Query}", QueryName);
+                }
             }
             else
             {
                 logger.LogError("Failed query {Query} with error ({StatusCode}): {ErrorMessage}",
-                    queryName,
+                    QueryName,
                     result.Error.Type,
                     result.Error.ErrorCode);
             }
