@@ -18,7 +18,7 @@ public static class AppOptionExtensions
                         && t is { IsClass: true, IsAbstract: false });
 
         var registerMethod = typeof(AppOptionExtensions)
-            .GetMethod(nameof(RegisterOption), BindingFlags.Static | BindingFlags.NonPublic);
+            .GetMethod(nameof(RegisterOption), BindingFlags.Static | BindingFlags.Public);
 
         foreach (var type in optionTypes)
         {
@@ -32,7 +32,7 @@ public static class AppOptionExtensions
         }
     }
 
-    private static void RegisterOption<TOptions>(
+    public static void RegisterOption<TOptions>(
         IServiceCollection services,
         IConfiguration configuration,
         string sectionName) where TOptions : class
@@ -52,13 +52,13 @@ public static class AppOptionExtensions
     }
 }
 
-public class FluentValidateOptions<TOptions>(IServiceProvider serviceProvider, string? name)
+public class FluentValidateOptions<TOptions>(IServiceProvider serviceProvider, string? expectedName)
     : IValidateOptions<TOptions>
     where TOptions : class
 {
-    public ValidateOptionsResult Validate(string? name1, TOptions options)
+    public ValidateOptionsResult Validate(string? name, TOptions options)
     {
-        if (name != null && name != name1) return ValidateOptionsResult.Skip;
+        if (expectedName != null && expectedName != name) return ValidateOptionsResult.Skip;
 
         ArgumentNullException.ThrowIfNull(options);
 
