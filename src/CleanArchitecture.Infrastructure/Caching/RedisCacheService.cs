@@ -59,7 +59,10 @@ public sealed class RedisCacheService : IDistributedCacheService
 
             await _database.StringSetAsync(redisKey, json, cacheExpiration);
 
-            _logger.LogDebug("Redis cache set: {Key} with expiration {Expiration}", key, cacheExpiration);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Redis cache set: {Key} with expiration {Expiration}", key, cacheExpiration);
+            }
         }
         catch (Exception ex)
         {
@@ -157,12 +160,19 @@ public sealed class RedisCacheService : IDistributedCacheService
             if (keysToDelete.Count > 0)
             {
                 await _database.KeyDeleteAsync(keysToDelete.ToArray());
-                _logger.LogInformation("Cleared {Count} keys with pattern {Pattern} from Redis database {DbNum}",
-                    keysToDelete.Count, pattern, _database.Database);
+                
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation("Cleared {Count} keys with pattern {Pattern} from Redis database {DbNum}",
+                        keysToDelete.Count, pattern, _database.Database);
+                }
             }
             else
             {
-                _logger.LogInformation("No keys with pattern {Pattern} found to clear.", pattern);
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation("No keys with pattern {Pattern} found to clear.", pattern);
+                }
             }
         }
         catch (Exception ex)
