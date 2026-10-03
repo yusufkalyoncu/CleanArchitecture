@@ -77,9 +77,8 @@ internal sealed class OutboxProcessor(
             logger.LogInformation("{Count} messages processed.", messages.Count);
             return messages.Count;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            logger.LogError(ex, "Batch processing failed.");
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
@@ -123,11 +122,11 @@ internal sealed class OutboxProcessor(
 
     private static Type? GetMessageType(string typeName)
     {
-        return TypeCache.GetOrAdd(typeName, _ =>
+        return TypeCache.GetOrAdd(typeName, name =>
         {
             return AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(a => a.GetTypes())
-                .FirstOrDefault(t => t.FullName == typeName || t.Name == typeName);
+                .FirstOrDefault(t => t.FullName == name || t.Name == name);
         });
     }
 
