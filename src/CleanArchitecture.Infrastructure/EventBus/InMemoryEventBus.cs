@@ -6,7 +6,7 @@ namespace CleanArchitecture.Infrastructure.EventBus;
 
 public sealed class InMemoryEventBus(IServiceProvider serviceProvider) : IEventBus
 {
-    public async Task PublishAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+    public async Task PublishAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
     {
         var eventType = integrationEvent.GetType();
 
