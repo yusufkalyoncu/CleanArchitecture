@@ -15,17 +15,26 @@ internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outb
 
         builder.Property(x => x.Content)
             .HasColumnType("jsonb")
-            .HasMaxLength(2000)
+            .HasMaxLength(1048576)
             .IsRequired();
 
         builder.Property(x => x.OccurredOnUtc)
             .IsRequired();
 
         builder.Property(x => x.Error)
-            .HasMaxLength(200)
-            .HasColumnType("text");
+            .HasColumnType("text")
+            .HasMaxLength(4000);
 
-        builder.HasIndex(x => x.ProcessedOnUtc)
-            .HasFilter("\"processed_on_utc\" IS NULL");
+        builder.Property(x => x.RetryCount)
+            .HasDefaultValue(0)
+            .IsRequired();
+
+        builder.Property(x => x.NextAttemptAtUtc);
+        builder.Property(x => x.LockedUntilUtc);
+        builder.Property(x => x.DeadLetteredOnUtc);
+
+        builder.HasIndex(x => x.OccurredOnUtc)
+            .HasDatabaseName("ix_outbox_messages_pending")
+            .HasFilter("processed_on_utc IS NULL AND dead_lettered_on_utc IS NULL");
     }
 }

@@ -8,6 +8,10 @@ public sealed class OutboxMessage
     public DateTime OccurredOnUtc { get; init; }
     public DateTime? ProcessedOnUtc { get; init; }
     public string? Error { get; init; }
+    public int RetryCount { get; init; }
+    public DateTime? NextAttemptAtUtc { get; init; }
+    public DateTime? LockedUntilUtc { get; init; }
+    public DateTime? DeadLetteredOnUtc { get; init; }
 
     private OutboxMessage() { }
 

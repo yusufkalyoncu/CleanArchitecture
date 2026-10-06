@@ -14,7 +14,6 @@ using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Scrutor;
 using Serilog;
 
 namespace CleanArchitecture.Infrastructure;
@@ -53,16 +52,37 @@ public static class DependencyInjection
     private static IServiceCollection AddEventBus(this IServiceCollection services)
     {
         services.AddSingleton<IEventBus, InMemoryEventBus>();
-        
-        services.Scan(selector => selector
-            .FromAssemblies(typeof(IEventBus).Assembly)
-            .AddClasses(classes => classes.AssignableTo(typeof(IIntegrationEventHandler<>)), publicOnly: false)
-            .UsingRegistrationStrategy(RegistrationStrategy.Append)
-            .AsImplementedInterfaces()
-            .WithScopedLifetime());
-        
+
+        var registry = new IntegrationEventHandlerRegistry();
+        services.AddSingleton(registry);
+
+        var handlerInterfaceOpenType = typeof(IIntegrationEventHandler<>);
+
+        var handlerTypes = typeof(IEventBus).Assembly
+            .GetTypes()
+            .Where(t => t is { IsAbstract: false, IsInterface: false }
+                        && t.GetInterfaces().Any(i =>
+                            i.IsGenericType && i.GetGenericTypeDefinition() == handlerInterfaceOpenType));
+
+        foreach (var handlerType in handlerTypes)
+        {
+            services.AddScoped(handlerType);
+
+            var handlerInterfaces = handlerType.GetInterfaces()
+                .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == handlerInterfaceOpenType);
+
+            foreach (var handlerInterface in handlerInterfaces)
+            {
+                services.AddScoped(handlerInterface, sp => sp.GetRequiredService(handlerType));
+
+                var eventType = handlerInterface.GetGenericArguments()[0];
+                registry.Register(eventType, handlerType);
+            }
+        }
+
         return services;
     }
+
 
     public static void AddSerilog(this IHostBuilder hostBuilder)
     {

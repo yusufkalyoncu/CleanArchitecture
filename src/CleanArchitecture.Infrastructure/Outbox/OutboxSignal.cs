@@ -1,10 +1,12 @@
 using CleanArchitecture.Application.Abstractions.Outbox;
+using Microsoft.Extensions.Options;
 
 namespace CleanArchitecture.Infrastructure.Outbox;
 
-public sealed class OutboxSignal : IOutboxSignal
+public sealed class OutboxSignal(IOptions<OutboxOptions> options) : IOutboxSignal
 {
-    private readonly SemaphoreSlim _signal = new(0);
+    private readonly SemaphoreSlim _signal = new(0, 1);
+    private readonly TimeSpan _pollingInterval = options.Value.PollingInterval;
 
     public void Notify()
     {
@@ -16,6 +18,6 @@ public sealed class OutboxSignal : IOutboxSignal
 
     public async Task WaitForSignalAsync(CancellationToken cancellationToken)
     {
-        await _signal.WaitAsync(TimeSpan.FromMinutes(5), cancellationToken);
+        await _signal.WaitAsync(_pollingInterval, cancellationToken);
     }
 }

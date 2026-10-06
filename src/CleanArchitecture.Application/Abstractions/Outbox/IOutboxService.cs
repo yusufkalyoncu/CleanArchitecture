@@ -1,6 +1,8 @@
+using CleanArchitecture.Shared;
+
 namespace CleanArchitecture.Application.Abstractions.Outbox;
 
 public interface IOutboxService
 {
-    Task AddAsync<T>(T message, CancellationToken cancellationToken = default) where T : class;
+    Task AddAsync(IIntegrationEvent message, CancellationToken cancellationToken = default);
 }
