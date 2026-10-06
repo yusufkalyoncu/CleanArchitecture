@@ -5,7 +5,7 @@ namespace CleanArchitecture.Infrastructure.Authentication;
 
 public sealed class JwtOptions : IAppOption
 {
-    public const string SectionName = "JwtOptions";
+    public static string SectionName => "JwtOptions";
     
     public required string Issuer { get; init; }
     public required string Audience { get; init; }

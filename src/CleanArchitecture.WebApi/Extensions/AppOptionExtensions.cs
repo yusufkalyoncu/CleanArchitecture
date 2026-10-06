@@ -22,7 +22,8 @@ public static class AppOptionExtensions
 
         foreach (var type in optionTypes)
         {
-            var sectionName = type.GetField("SectionName")?.GetValue(null)?.ToString();
+            var sectionName = type.GetProperty("SectionName", BindingFlags.Public | BindingFlags.Static)?
+                .GetValue(null)?.ToString();
 
             if (string.IsNullOrWhiteSpace(sectionName)) continue;
 

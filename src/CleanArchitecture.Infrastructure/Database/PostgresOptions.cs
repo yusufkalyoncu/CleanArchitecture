@@ -5,7 +5,7 @@ namespace CleanArchitecture.Infrastructure.Database;
 
 public sealed class PostgresOptions : IAppOption
 {
-    public const string SectionName = "PostgresOptions";
+    public static string SectionName => "PostgresOptions";
 
     public string Username { get; init; } = null!;
     public string Password { get; init; } = null!;
