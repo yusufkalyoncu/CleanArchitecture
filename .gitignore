@@ -58,10 +58,9 @@ packages/
 *.g.targets
 *.AssemblyInfo.cs
 *.AssemblyAttributes.cs
-*.UnitTests
-
 # Test Results
 TestResults/
+coverage.*
 
 # Logs
 *.log

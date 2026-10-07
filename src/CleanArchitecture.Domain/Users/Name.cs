@@ -23,9 +23,6 @@ public readonly record struct Name
 
     public static Result<Name> Create(string firstName, string lastName)
     {
-        firstName = firstName.Trim();
-        lastName = lastName.Trim();
-
         if (string.IsNullOrWhiteSpace(firstName))
         {
             return Result.Failure<Name>(UserErrors.Name.FirstName.Empty);
@@ -35,6 +32,9 @@ public readonly record struct Name
         {
             return Result.Failure<Name>(UserErrors.Name.LastName.Empty);
         }
+        
+        firstName = firstName.Trim();
+        lastName = lastName.Trim();
 
         if(firstName.Length < FirstNameMinLength)
         {
