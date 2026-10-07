@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
@@ -6,6 +6,10 @@
         <Nullable>enable</Nullable>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="CleanArchitecture.Application.UnitTests" />
+    </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
