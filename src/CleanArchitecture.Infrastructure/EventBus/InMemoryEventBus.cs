@@ -3,12 +3,14 @@ using System.Reflection;
 using CleanArchitecture.Application.Abstractions.EventBus;
 using CleanArchitecture.Shared;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace CleanArchitecture.Infrastructure.EventBus;
 
 public sealed class InMemoryEventBus(
     IServiceProvider serviceProvider,
-    IntegrationEventHandlerRegistry handlerRegistry) : IEventBus
+    IntegrationEventHandlerRegistry handlerRegistry,
+    ILogger<InMemoryEventBus> logger) : IEventBus
 {
     private static readonly ConcurrentDictionary<Type, MethodInfo> HandleMethodCache = new();
 
@@ -21,7 +23,10 @@ public sealed class InMemoryEventBus(
         var handlerTypes = handlerRegistry.GetHandlerTypes(eventType);
 
         if (handlerTypes.Length == 0)
+        {
+            logger.LogWarning("No handlers registered for event type {EventType}.", eventType.Name);
             return;
+        }
 
         var handleMethod = HandleMethodCache.GetOrAdd(
             eventType,
@@ -88,7 +93,8 @@ public sealed class InMemoryEventBus(
         var context = scope.ServiceProvider.GetRequiredService<MessageContext>();
         context.MessageId = messageId;
 
-        var handler = scope.ServiceProvider.GetRequiredService(handlerType);
+        var handlerInterface = typeof(IIntegrationEventHandler<>).MakeGenericType(integrationEvent.GetType());
+        var handler = scope.ServiceProvider.GetRequiredKeyedService(handlerInterface, handlerType);
 
         try
         {

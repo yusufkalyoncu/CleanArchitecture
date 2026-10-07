@@ -6,6 +6,7 @@ using CleanArchitecture.Infrastructure.Caching;
 using CleanArchitecture.Infrastructure.Database;
 using CleanArchitecture.Infrastructure.DomainEvents;
 using CleanArchitecture.Infrastructure.EventBus;
+using CleanArchitecture.Infrastructure.Inbox;
 using CleanArchitecture.Infrastructure.Locking;
 using CleanArchitecture.Infrastructure.Outbox;
 using CleanArchitecture.Infrastructure.RateLimiting;
@@ -26,6 +27,7 @@ public static class DependencyInjection
             .AddValidators()
             .AddEventBus()
             .AddOutboxServices()
+            .AddInboxServices()
             .AddDatabase(configuration)
             .AddRedisConfiguration(configuration)
             .AddCacheServices()
@@ -73,13 +75,23 @@ public static class DependencyInjection
 
             foreach (var handlerInterface in handlerInterfaces)
             {
-                services.AddScoped(handlerInterface, sp => sp.GetRequiredService(handlerType));
-
                 var eventType = handlerInterface.GetGenericArguments()[0];
+                var decoratorType = typeof(InboxHandlerDecorator<>).MakeGenericType(eventType);
+
+                services.AddKeyedScoped(handlerInterface, handlerType, (sp, _) =>
+                    ActivatorUtilities.CreateInstance(
+                        sp, decoratorType, sp.GetRequiredService(handlerType), handlerType.FullName!));
+
                 registry.Register(eventType, handlerType);
             }
         }
 
+        return services;
+    }
+
+    private static IServiceCollection AddInboxServices(this IServiceCollection services)
+    {
+        services.AddHostedService<InboxCleanupBackgroundService>();
         return services;
     }
 

@@ -34,6 +34,10 @@ public sealed class OutboxOptions : IAppOption
     /// <summary>Number of days to keep processed and dead-lettered messages before cleanup.</summary>
     public int RetentionDays { get; init; } = 7;
 
+    /// <summary>Number of days to keep processed inbox messages before cleanup.</summary>
+    /// <remarks>This MUST be greater than the outbox retention time + expected time to manually requeue a dead-lettered message. If it's shorter, a re-queued event will trigger handlers again.</remarks>
+    public int InboxRetentionDays { get; init; } = 30;
+
     // Computed helpers
     public TimeSpan MessageTimeout => TimeSpan.FromSeconds(MessageTimeoutSeconds);
     public TimeSpan LockTimeout => TimeSpan.FromSeconds(LockTimeoutSeconds);
@@ -55,6 +59,7 @@ internal sealed class OutboxOptionsValidator : AbstractValidator<OutboxOptions>
         RuleFor(x => x.MaxRetryCount).InclusiveBetween(1, 100);
         RuleFor(x => x.PollingIntervalSeconds).InclusiveBetween(1, 600);
         RuleFor(x => x.RetentionDays).InclusiveBetween(1, 365);
+        RuleFor(x => x.InboxRetentionDays).GreaterThan(x => x.RetentionDays);
 
         // Cross-property validation to ensure lease duration covers worst-case batch processing time:
         RuleFor(x => x.LockTimeoutSeconds)
