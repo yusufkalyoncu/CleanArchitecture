@@ -9,8 +9,6 @@ namespace CleanArchitecture.Application.UnitTests.Abstractions.Behaviors;
 
 public class LoggingDecoratorTests
 {
-    private sealed record DummyCommand : ICommand<string>;
-
     [Fact]
     public async Task Handle_ShouldCallInnerHandlerAndReturnResult()
     {
