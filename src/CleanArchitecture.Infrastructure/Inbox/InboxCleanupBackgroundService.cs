@@ -42,7 +42,7 @@ internal sealed class InboxCleanupBackgroundService(
         }
     }
 
-    private async Task<int> CleanupInboxMessagesAsync(CancellationToken ct)
+    internal async Task<int> CleanupInboxMessagesAsync(CancellationToken ct)
     {
         const string sql = """
             DELETE FROM public.inbox_messages

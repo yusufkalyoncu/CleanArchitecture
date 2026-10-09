@@ -13,7 +13,7 @@ internal sealed class OutboxProcessor(
     IEventBus eventBus,
     OutboxEventTypeRegistry registry,
     IOptions<OutboxOptions> options,
-    ILogger<OutboxProcessor> logger)
+    ILogger<OutboxProcessor> logger) : IOutboxProcessor
 {
     private readonly OutboxOptions _options = options.Value;
 
@@ -24,10 +24,10 @@ internal sealed class OutboxProcessor(
     /// 3. Persists all results in a single bulk UPDATE.
     /// Note: Does not guarantee ordered execution.
     /// </summary>
-    public async Task<int> ProcessBatchAsync(CancellationToken stoppingToken)
+    public async Task<int> ProcessBatchAsync(CancellationToken cancellationToken = default)
     {
         // ── 1. CLAIM ──────────────────────────────────────────────────────────
-        var messages = await ClaimBatchAsync(stoppingToken);
+        var messages = await ClaimBatchAsync(cancellationToken);
 
         if (messages.Count == 0)
             return 0;
@@ -36,7 +36,7 @@ internal sealed class OutboxProcessor(
         // null = message processing was cancelled due to shutdown.
         var results = new OutboxUpdateResult?[messages.Count];
 
-        // We DO NOT pass stoppingToken to ParallelOptions.
+        // We DO NOT pass cancellationToken to ParallelOptions.
         // If we did, cancellation would throw an exception, bypassing the write phase
         // and causing successfully processed messages to be lost and re-processed.
         // Instead, we manually check the token inside the loop.
@@ -46,14 +46,14 @@ internal sealed class OutboxProcessor(
             async (item, _) =>
             {
                 // Graceful shutdown: skip processing, leave result as null to release the lock.
-                if (stoppingToken.IsCancellationRequested)
+                if (cancellationToken.IsCancellationRequested)
                     return;
 
                 // Link the message timeout with the global shutdown token.
-                using var msgCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+                using var msgCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 msgCts.CancelAfter(_options.MessageTimeout);
 
-                results[item.idx] = await ProcessSingleMessageAsync(item.msg, msgCts.Token, stoppingToken);
+                results[item.idx] = await ProcessSingleMessageAsync(item.msg, msgCts.Token, cancellationToken);
             });
 
         // Separate completed and incomplete messages.
@@ -126,7 +126,7 @@ internal sealed class OutboxProcessor(
     private async Task<OutboxUpdateResult?> ProcessSingleMessageAsync(
         OutboxMessageRow message,
         CancellationToken msgCt,
-        CancellationToken stoppingToken)
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -174,7 +174,7 @@ internal sealed class OutboxProcessor(
             // Success: preserve existing retry_count for diagnostics.
             return OutboxUpdateResult.Success(message.Id, message.RetryCount);
         }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             // Graceful shutdown: return null to release the lock without incrementing retry_count.
             return null;

@@ -25,7 +25,7 @@ internal sealed class OutboxBackgroundService(
             try
             {
                 using var scope = scopeFactory.CreateScope();
-                var processor = scope.ServiceProvider.GetRequiredService<OutboxProcessor>();
+                var processor = scope.ServiceProvider.GetRequiredService<IOutboxProcessor>();
 
                 processed = await processor.ProcessBatchAsync(stoppingToken);
             }

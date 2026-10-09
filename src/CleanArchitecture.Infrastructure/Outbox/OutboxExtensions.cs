@@ -25,7 +25,7 @@ public static class OutboxExtensions
         // ── Core services ─────────────────────────────────────────────────────
         services.AddScoped<IOutboxService, OutboxService>();
         services.AddSingleton<IOutboxSignal, OutboxSignal>();
-        services.AddScoped<OutboxProcessor>();
+        services.AddScoped<IOutboxProcessor, OutboxProcessor>();
         services.AddScoped<OutboxInsertInterceptor>();
 
         // ── Background services ───────────────────────────────────────────────

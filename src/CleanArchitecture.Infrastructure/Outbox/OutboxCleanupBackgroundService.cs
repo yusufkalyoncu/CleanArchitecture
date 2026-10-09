@@ -52,7 +52,7 @@ internal sealed class OutboxCleanupBackgroundService(
         logger.LogInformation("Outbox Cleanup stopped.");
     }
 
-    private async Task CleanupAsync(CancellationToken ct)
+    internal async Task<int> CleanupAsync(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
         var dataSource = scope.ServiceProvider.GetRequiredService<NpgsqlDataSource>();
@@ -95,5 +95,7 @@ internal sealed class OutboxCleanupBackgroundService(
             logger.LogInformation("Outbox cleanup deleted {Count} old messages (cutoff={Cutoff:u}).",
                 totalDeleted, cutoff);
         }
+
+        return totalDeleted;
     }
 }
