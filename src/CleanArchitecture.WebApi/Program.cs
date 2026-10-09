@@ -41,3 +41,8 @@ app.MapEndpoints();
 // app.MapControllers(); // Enable this only if you are using Controllers
 
 await app.RunAsync();
+
+public partial class Program
+{
+    protected Program() { }
+}
