@@ -45,6 +45,7 @@ public static class AuthenticationExtensions
         bool validateLifetime)
     {
         options.RequireHttpsMetadata = false;
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             IssuerSigningKey = key,

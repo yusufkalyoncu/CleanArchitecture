@@ -10,7 +10,7 @@ internal sealed class Get : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("users", async (
+        app.MapGet("users", async (
                 IQueryHandler<GetUsersQuery, IEnumerable<GetUsersQueryResponse>> handler,
                 IStringLocalizer<Lang> localizer,
                 CancellationToken cancellationToken) =>

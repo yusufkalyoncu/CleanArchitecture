@@ -10,7 +10,7 @@ internal sealed class GetById : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("users/{id:guid}", async (
+        app.MapGet("users/{id:guid}", async (
                 Guid id,
                 IQueryHandler<GetUserQuery, GetUserQueryResponse> handler,
                 IStringLocalizer<Lang> localizer,

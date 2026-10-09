@@ -28,6 +28,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="CleanArchitecture.WebApi.UnitTests" />
+        <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    </ItemGroup>
+
+    <ItemGroup>
       <Content Include="..\..\.dockerignore">
         <Link>.dockerignore</Link>
       </Content>

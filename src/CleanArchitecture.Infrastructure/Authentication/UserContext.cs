@@ -47,7 +47,7 @@ public sealed class UserContext(IHttpContextAccessor httpContextAccessor) : IUse
 
     private Guid GetUserId()
     {
-        var userId = HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = HttpContext?.User.FindFirstValue(JwtRegisteredClaimNames.Sub);
         return Guid.TryParse(userId, out var parsedUserId) ? parsedUserId : Guid.Empty;
     }
 
